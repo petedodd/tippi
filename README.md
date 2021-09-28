@@ -6,10 +6,15 @@ tbc
 ├── dataprep
 │   ├── graphs
 │   └── outdata
-└── inference
+├── inference
+│   ├── graphs
+│   ├── indata
+│   ├── outdata
+│   └── stan
+└── model
+    ├── data
     ├── graphs
     ├── indata
-    ├── outdata
-    └── stan
+    └── outdata
 
 ```

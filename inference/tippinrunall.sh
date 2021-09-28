@@ -9,13 +9,3 @@ R --vanilla < tippistanrunner.R tx 3
 
 # then some composite graphs/outputs
 R --vanilla < tippigather.R
-
-
-# for i in {1..3}
-# do
-#     for x in tx px
-#     do
-#         echo $x $i
-#         R --vanilla < tippistanrunner3.R $x $i
-#     done
-# done

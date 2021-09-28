@@ -27,9 +27,9 @@ hsm <- stan_model(file=here('stan/tippihm.stan')) #hierarchical model
 
 ## load data
 if(qty=='tx'){ #select qty
-    D <- fread(here('indata/T.csv'))
+    D <- fread(here('../dataprep/outdata/T.csv'))
 } else{
-    D <- fread(here('indata/P.csv'))
+    D <- fread(here('../dataprep/outdata/P.csv'))
 }
 D <- D[age==shhs[page,aged]] #select age
 D[,Facility:=site]
@@ -153,13 +153,13 @@ ggplot(MC,aes(country,`50%`)) +
     geom_hline(yintercept = 1,lty=2,col='darkgrey')+
     geom_point(size=2) +
     geom_errorbar(aes(ymin=`2.5%`,ymax=`97.5%`),width=0) +
-    scale_y_sqrt() + 
+    scale_y_sqrt(limits=c(0,150)) + #NOTE one DRC site omitted
     ylab('Rate ratio (square root scale)')+
     xlab('Country')+
     coord_flip() +
     theme_classic() + ggpubr::grids()+ ggtitle(shhs[page,aged])+
     labs(size='Number (intervention)')+
-    guides(colour=FALSE) + 
+    guides(colour="none") + 
     theme(legend.position = 'bottom')
 
 

@@ -1,0 +1,12 @@
+variable,n_eff,Rhat
+Cameroon,20413,0.9998
+Cote d'Ivoire,12963,1.0001
+DRC,11712,1.0002
+Kenya,17461,0.9999
+Lesotho,12066,0.9999
+Malawi,18887,0.9998
+Uganda,9885,0.9999
+Zimbabwe,11356,1
+sig,6339,0.9998
+lcm,9693,0.9999
+lcs,8639,0.9999

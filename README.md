@@ -7,8 +7,8 @@ tbc
 │   ├── graphs
 │   └── outdata
 ├── inference
+│   ├── data
 │   ├── graphs
-│   ├── indata
 │   ├── outdata
 │   └── stan
 └── model
@@ -16,5 +16,4 @@ tbc
     ├── graphs
     ├── indata
     └── outdata
-
 ```

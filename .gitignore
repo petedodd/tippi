@@ -1,3 +1,5 @@
 .DS_Store
 .Rhistory
 inference/stan/*.rds
+dataprep/graphs/*.pdf
+dataprep/graphs/*.png

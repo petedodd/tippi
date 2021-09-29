@@ -1,0 +1,1252 @@
+rm(list=ls())
+## libraries
+library(here)
+library(data.table)
+library(HEdtree)
+library(ggplot2)
+library(ggthemes)
+library(scales)
+library(glue)
+
+## for CEAC plotting
+source(here('../dataprep/tippifunctions.R'))
+
+## data
+load(file=here('data/edat.Rdata')) #effect data
+load(file=here('data/LYK.Rdata'))  #LYs discounted
+load(file=here('data/DBCE.Rdata')) #ratios int v bl
+load(file=here('data/ATR.Rdata')) #ATT cascade
+load(file=here('data/ART2.Rdata')) #ATT cascade & costs
+load(file=here('data/CDR.Rdata')) #CDR
+load(file=here('data/H.Rdata')) #HIV - not so relevant
+load(file=here('data/PTFH.Rdata')) #PT from HIV split
+load(file=here('data/PTC.Rdata')) #PT cascade
+load(file=here('data/CD.Rdata'))  #rawer cost data
+load(file=here('data/ASM.Rdata')) #age splits
+load(file=here('data/BC.Rdata')) #PT v ATT split
+load(file=here('data/corfac.Rdata'))          #HH v ATT screen factor
+load(file=here('data/HHCM.Rdata'))            #HHCM cascade
+BL <- fread(here('indata/blextract1.csv'))   #BL extract HIV
+INT <- fread(here('indata/resource.int.csv')) #INT cascade data
+names(INT)[names(INT)=='CDI'] <- "Cote d'Ivoire"
+CET <- fread(here('indata/TIPPIresults - CEthresholds.csv'))#CE thresholds
+PD <- read.csv(here('indata/TIPPIresults - TIPPIparms.csv')) #modelling parmeters
+PZ <- parse.parmtable(PD)                     #make into parm object
+
+## --- settings
+set.seed(1234)
+ceactop <- 3e3 #top to plot in CEAC curves
+##sensitivity analyses (mostly for PT):
+## '' = basecase
+## 'hhc' = including 10$ as SoC HHC cost
+## 'cdr' = making cdr higher for incidence
+## 'txd' = making the completion influence tx/pt outcome
+sacases <- c('','hhc','cdr','txd')
+SA <- sacases[1] #,hhc,cdr,txd
+SAT <- ifelse(SA=='txd','txd','') #SA relevant to Tx
+ACF <- 1
+
+## country key
+CK <- data.table(iso3=unique(LYK$iso3)) #NOTE this is where the countries involved are coded
+CK[iso3=='CMR',country:='Cameroon']
+CK[iso3=='CIV',country:="Cote d'Ivoire"]
+CK[iso3=='COD',country:='DRC']
+CK[iso3=='KEN',country:='Kenya']
+CK[iso3=='LSO',country:='Lesotho']
+CK[iso3=='MWI',country:='Malawi']
+CK[iso3=='TZA',country:='Tanzania']
+CK[iso3=='UGA',country:='Uganda']
+CK[iso3=='ZWE',country:='Zimbabwe']
+CK
+LYK <- merge(LYK,CK,by='iso3')
+
+## restrict intervention resource data to countries used
+keep <- c('metric',CK$country)
+INT <- INT[,..keep]
+INT[is.na(INT)] <- 0
+
+## part0
+## ================= PSA data for both ============================
+## make PSA df for outcome data
+PSA <- makePSA(max(edat$id),PZ,dbls = list(c('hivartOR:mn','hivartOR:sg')))
+PSA[,id:=1:nrow(PSA)]
+## make ontx HIV+ outcomes
+PSA[,ontxHAY:=ilogit(logit(ontxY) + `hivartOR:mn` + `hivartOR:sg`)] #on ART
+PSA[,ontxHAO:=ilogit(logit(ontxO) + `hivartOR:mn` + `hivartOR:sg`)] #on ART
+## PSA[,ontxHAY:=pmax(ontxHAY,ontxY)]; PSA[,ontxHAO:=pmax(ontxHAO,ontxO)]
+
+CFRdata <- PSA[,.(id,notxY,ontxY,
+                  notxO,ontxO,
+                  notxHAY,notxHAO,
+                  ontxHAY,ontxHAO)] #,ontxHAY,ontxHAO
+CFRdatam <- melt(CFRdata,id='id')
+CFRdatam[,age:='5-14']; CFRdatam[grepl('Y',variable),age:='0-4']
+CFRdatam[,variable:=gsub("Y$|O$","",variable)]
+CFRdatam <- dcast(CFRdatam,id+age~variable,value.var = 'value')
+CFRdatam[,c('dN','dA'):=.(notx-ontx,notxHA-ontxHA)] #delta-CFR
+
+## changes in ATT success
+nmz <- names(INT)[-1]
+txsuccess <- data.table(
+    country=nmz,
+    BL=unlist(INT[metric=='TxSuccesspcBL',..nmz]),
+    INT=unlist(INT[metric=='TxSuccesspc',..nmz])/100
+)
+fwrite(txsuccess,file=here('outdata/txsuccess.csv'))
+ptsuccess <- data.table(
+    country=nmz,
+    BL=unlist(INT[metric=='PtcompletepcBL',..nmz]),
+    INT=unlist(INT[metric=='Ptcompletepc',..nmz])/100
+)
+fwrite(ptsuccess,file=here('outdata/ptsuccess.csv'))
+
+
+tmp <- CFRdatam[,.(age,dN,dA)]
+tmp <- melt(tmp,id='age')
+## ggplot(tmp,aes(variable,value)) +
+##     geom_boxplot()+
+##     facet_wrap(~age)
+
+## TODO
+## NOTE isse here that dA for 0-4 is smaller than dN
+CFRdatam[,dA:=pmax(dA,dN)]
+
+## NOTE see also PSA manipulation specific to PT in second part
+
+
+## HHCM cascade
+## NOTE aggregated over mode TODO - think about country-specific mode
+HHCM <- HHCM[,.(value=sum(value)),by=.(age,activity)]
+
+## make relative to index cases with HHCM
+HHCM[,value:=value/HHCM[activity=="index cases with HHCM",value]]
+
+## format threshold data
+CET[,`1x GDP`:=as.numeric(gsub(",","",`1x GDP`))]
+CET[,`3x GDP`:=as.numeric(gsub(",","",`3x GDP`))]
+CETM <- CET[,.(iso3=Country,`1x GDP`,`3x GDP`,Y1a,Y1b,Y2a,Y2b)]
+CETM <- melt(CETM,id='iso3')
+CETM[,value:=as.numeric(value)]
+CETM <- merge(CETM,CK,by='iso3')
+names(CETM)[2] <- 'threshold'
+tmp <- CETM[threshold=='1x GDP'] #add in 1/2 GDP as in Chi Vassall
+tmp[,value:=value/2]
+tmp[,threshold:='0.5x GDP']
+CETM <- rbind(CETM,tmp)
+CETM
+
+## part1
+## ================= ATT component ============================
+
+## change names DBCE so presumptive identified is screened
+extra <- as.data.table(expand.grid(metric='Screened for symptoms',
+                                   country=unique(ATR$country)))
+extra <- merge(extra,DBCE[metric=='Presumptive TB identified',
+                          .(country,ratio)],
+               by='country')
+
+## int/soc ratios for cascades at different stages
+E1 <- copy(DBCE)
+E1 <- rbind(E1,extra)
+E1 <- merge(E1,CK,by='country')
+
+## merge against cascade/cost data
+
+K <- merge(ART2,E1,by=c('iso3','metric'),all.x = TRUE)
+K[is.na(ratio),ratio:=1]
+K[,country:=NULL]
+K[iso3=='ZWE']
+##NOTE this same structure (K) is developed in model data
+## would be best to ensure consistency and remove from this file
+
+## computing costs by activity 
+KA <- copy(K)
+KA[,cost.soc:=frac*uc.soc/ratio] #cost assuming resource use same as soc
+KA[,cost.int:=frac*(uc.soc+uc.int)] #including scale-up
+KA[iso3=='MWI']
+
+
+## formatting and plotting
+KAM <- melt(KA[metric!='Diagnosed with TB',.(metric,iso3,cost.soc,cost.int)],
+            id.vars = c('metric','iso3'))
+KAM <- merge(KAM,CK,by='iso3')
+KAM$metric <- factor(KAM$metric,
+                     levels=c('Screened for symptoms',
+                              'Presumptive TB identified',
+                              'Presumptive TB tested on Xpert',
+                              'TB treatment'),ordered = TRUE) #TODO fix levels
+KAM[grepl('soc',variable),variable:='SOC']
+KAM[grepl('int',variable),variable:='Intervention']
+
+
+ggplot(KAM,aes(iso3,value,fill=metric)) +
+  geom_bar(stat='identity') +
+  facet_wrap(~variable) +
+  scale_fill_colorblind() +
+  scale_y_continuous(label=comma)+
+  xlab('Country') + ylab('Cost per child treated (USD)') +
+  theme(axis.text.x = element_text(angle = 45, vjust = 1.0, hjust=1))
+
+ggsave(here('graphs/cost_cascade.png'),h=6,w=10)
+ggsave(here('graphs/cost_cascade.pdf'),h=6,w=10)
+
+
+ggplot(KAM[variable=='Intervention'],
+       aes(country,value,fill=metric)) +
+  geom_bar(stat='identity',position='fill') +
+  facet_wrap(~variable) +
+  scale_fill_colorblind() +
+  scale_y_continuous(label=percent)+
+  xlab('Country') + ylab('Fraction of cost per child treated by stage') +
+    theme(axis.text.x = element_text(angle = 45, vjust = 1.0, hjust=1),
+          legend.position = 'top',legend.title = element_blank())
+
+
+ggsave(here('graphs/cost_cascade2.png'),h=6,w=9)
+ggsave(here('graphs/cost_cascade2.pdf'),h=6,w=9)
+
+names(K)
+
+## compute total costs & SD
+K2 <- K[,.(cost.soc=sum(frac*uc.soc/ratio),
+           cost.soc.sd=ssum(frac*uc.soc.sd/ratio),
+           cost.int=sum(frac*(uc.soc+uc.int)),
+           cost.int.sd=ssum(frac*uc.soc.sd)),
+        by=iso3]
+K2 <- merge(K2,CK,by='iso3')
+
+## merge cost data into effect data
+T <- edat[quant!='px']
+T <- merge(T,K2,by='country',all.x=TRUE)
+
+## gamma samples for cost uncertainty
+T[,costv.soc:=rgamma(nrow(T),
+                  shape=(cost.soc/cost.soc.sd)^2,
+                  scale = cost.soc.sd^2/cost.soc)]
+T[,costv.int:=rgamma(nrow(T),
+                  shape=(cost.int/cost.int.sd)^2,
+                  scale = cost.int.sd^2/cost.int)]
+## multiply unit costs by volume (ie # treated)
+T[,c('costt.soc','costt.int'):=.(costv.soc,costv.int*RR)]
+
+## incremental cost
+T[,Dcost:=costt.int-costt.soc]
+
+names(T)
+
+
+## HIV prevalence from BL data
+H <- BL[country %in% CK$country,.(country,hiva=hiv,Tbdx)]
+H <- H[rep(1:nrow(H),each=max(PSA$id))]
+H[,id:=rep(1:max(PSA$id),nrow(CK))]
+H <- rbind(H,H)
+H[,age:=rep(c('0-4','5-14'),each=nrow(H)/2)]
+H[,hiv:=rbeta(nrow(H),hiva,Tbdx)]
+H <- H[,.(id,country,age,hiv)]
+H <- merge(H,CK,by='country')
+
+## merge in HIV prevalence
+T <- merge(T,H[,.(id,iso3,age,hiv)],
+           by=c('id','age','iso3'),all.x = TRUE)
+
+## make data on average CFR change
+
+## merge CFR data into cost/effect data
+T <- merge(T,CFRdatam,by=c('id','age')) #merge in CFR
+T <- merge(T,txsuccess,by='country')    #change in tx success kk
+
+
+## calculate mean differential CFR: assume all HIV on ART
+## T[,dCFR:=dN*(1-hiv) + dA*hiv]
+## T[,dCFR0:=dN*(1-0) + dA*0]
+
+T[,CFRnotx:=notx*(1-hiv) + notxHA*hiv]
+T[,CFRtx:=ontx*(1-hiv) + ontxHA*hiv]
+T[,CFRtx.soc:=CFRtx]
+if(SA=='txd'){                        #sensitivity analysis
+    T[,CFRtx.soc:=CFRtx * (1-BL)/(1-INT)] #scale up tx CFR by non-success
+}
+
+
+## incremental lives saved - change in implied by RR
+## T[,LS:=(RR-1)*dCFR]
+## T[,LS.hiv0:=(RR-1)*dCFR0]         #sensitivity analysis with no HIV
+
+## before - 1 ontx:(RR-1) notx
+## after - RR ontx: 0     notx
+T[,deaths.int:=CFRtx*RR]         #deaths in intervention
+T[,deaths.soc:=CFRtx.soc + (RR-1)*CFRnotx]         #deaths in soc
+T[,LS:=deaths.soc-deaths.int]
+if(SA=='txd'){                        #sensitivity analysis
+    T[,LS.hiv0:=(ontx*(1-BL)/(1-INT) + (RR-1)*notx)-ontx*RR]
+} else {
+    T[,LS.hiv0:=(ontx + (RR-1)*notx)-ontx*RR]
+}
+
+## u5/o5 split 
+## S <- data.table(age=c('0-4','5-14'),frac=c(0.6,0.4))
+## S <- CDR[qty=='frac',.(iso3,age,frac=value)] #frac us WHO est case mix
+S <- ASM[qty=='tx']
+S <- S[rep(1:nrow(S),each=max(T$id))]
+S <- S[,frac:=rbeta(nrow(S),`0-4`,`5-14`)]
+S[,id:=rep(1:max(T$id),nrow(S)/max(T$id))]
+S <- dcast(S[,.(country,id,period,frac)],
+           country+id~period,value.var = 'frac')
+T <- merge(T,S,by=c('country','id'),all.x=TRUE)
+T[age=='5-14',Baseline:=1-Baseline]
+T[age=='5-14',Intervention:=1-Intervention]
+T[iso3=='ZWE' & id==1] #check
+names(T)[names(T)=='Baseline'] <- 'frac'
+names(T)[names(T)=='Intervention'] <- 'fracI'
+
+## merge in life-expectancy & calculate DALY changes
+T <- merge(T,LYK[,.(iso3,age,LYS,LYS0)],by=c('iso3','age'),all.x=TRUE)
+T[,c('dDALY','dDALY0','dDALY.nohiv'):=.(LYS*LS,LYS0*LS,LYS*LS.hiv0)]
+
+
+## ## save out for references
+## save(T,file=here("data/T.Rdata"))
+
+## calculate differential costs & DALYs over ages
+## NOTE frac here is age split
+T1 <- T[,.(cost.soc=sum(costt.soc*frac),
+           cost.int=sum(costt.int*frac),
+           Dcost=sum(Dcost*frac),
+           LS=sum(LS*frac),
+           ## deaths.soc=sum((deaths.int+LS)*frac),
+           deaths.soc=sum(deaths.soc*frac),
+           deaths.int=sum(deaths.int*frac),
+           dDALY0=sum(dDALY0*frac),
+           dDALY=sum(dDALY*frac),
+           dDALY.nohiv=sum(dDALY.nohiv*frac)),
+        by=.(country,id)]
+## T[,mean(RR-1),by=.(country,age)]
+T1 <- merge(T1,CK,by='country') #country iso3 merged on
+
+## same with age - basically just consistent renaming
+T2 <- T[,.(cost.soc=(costt.soc),
+           cost.int=(costt.int),
+           Dcost=(Dcost),
+           LS=(LS),
+           ## deaths.soc=((deaths.int+LS)),
+           deaths.soc=(deaths.soc),
+           deaths.int=(deaths.int),
+           dDALY0=(dDALY0),
+           dDALY=(dDALY),
+           dDALY.nohiv=(dDALY.nohiv)),
+        by=.(country,id,age)]
+T2 <- merge(T2,CK,by='country') #country iso3 merged on
+
+
+
+summary(T1)
+
+## --- CEA and CEAC plots ---
+
+## CEA plot
+ggplot(T1,aes(dDALY,Dcost)) +
+    geom_vline(xintercept = 0)+
+    geom_hline(yintercept = 0)+
+    geom_point(alpha=0.1,shape=1) +
+    geom_abline(data=CETM[threshold %in% c("0.5x GDP","1x GDP")],
+                aes(intercept=0,slope=value,col=threshold))+
+    facet_wrap(~country) +
+    scale_y_continuous(label=comma) +
+    xlab('Incremental discounted life-years saved')+
+    ylab('Incremental cost (USD)')+
+    theme(legend.position = "top" )
+
+fn1 <- glue(here('graphs/CEall')) + SAT + '.png'
+fn2 <- glue(here('graphs/CEall')) + SAT + '.pdf'
+ggsave(file=fn1,w=10,h=10); ggsave(file=fn2,w=10,h=10)
+
+
+## make CEAC data
+lz <- seq(from = 0,to=ceactop,length.out = 1000)
+ceacd <- list()
+for(iso in unique(T1$iso3)){
+    tmp <- T1[iso3==iso,.(Q=dDALY,P=Dcost)]
+    ceacd[[iso]] <- data.table(
+        iso3=iso,x=lz,
+        y=make.ceac(tmp,lz))
+}
+ceacd <- rbindlist(ceacd)
+
+## make CEAC plot
+CEAC <- make.ceac.plot(ceacd,xpad=50)
+CEAC
+
+fn1 <- glue(here('graphs/CEAC')) + SAT + '.png'
+fn2 <- glue(here('graphs/CEAC')) + SAT + '.pdf'
+ggsave(file=fn1,w=7,h=7); ggsave(file=fn2,w=7,h=7)
+
+
+
+## output where things X 50%
+tmp <- ceacd[abs(y-0.5)<1e-2] #NOTE may need tuning if sample changes
+tmp[,err:=abs(y-0.5)]
+tmp[,ermin:=min(err),by=iso3]
+tmp <- tmp[err==ermin]
+tmp <- tmp[,.(iso3,ceac50=round(x))]
+tmp
+fn1 <- glue(here('outdata/CEAC50')) + SAT + '.csv'
+fwrite(tmp,file=fn1)
+
+
+## ICERs by country
+ice <- T1[,.(cost.soc=mean(cost.soc), #costs
+             cost.soc.lo=lof(cost.soc),
+             cost.soc.hi=hif(cost.soc),
+             cost.int=mean(cost.int),
+             cost.int.lo=lof(cost.int),
+             cost.int.hi=hif(cost.int),
+             Dcost=mean(Dcost),
+             Dcost.lo=lof(Dcost),
+             Dcost.hi=hif(Dcost),
+             ## deaths
+             deaths.soc=mean(deaths.soc),
+             deaths.soc.lo=lof(deaths.soc),
+             deaths.soc.hi=hif(deaths.soc),
+             deaths.int=mean(deaths.int),
+             deaths.int.lo=lof(deaths.int),
+             deaths.int.hi=hif(deaths.int),
+             Ddeaths=mean(deaths.int-deaths.soc),
+             Ddeaths.lo=lof(deaths.int-deaths.soc),
+             Ddeaths.hi=hif(deaths.int-deaths.soc),
+             LS=mean(LS),LS.lo=lof(LS),LS.hi=hif(LS),
+             ## dalys
+             dDALY0=mean(dDALY0),
+             dDALY=mean(dDALY),
+             dDALY.nohiv=mean(dDALY.nohiv),
+             dDALY.hi=hif(dDALY),
+             dDALY.lo=lof(dDALY),
+             dDALY0.hi=hif(dDALY0),
+             dDALY0.lo=lof(dDALY0),
+             ## ICER
+             ICER=mean(Dcost)/mean(dDALY)
+             ),
+          by=country]
+txd <- T[,.(tx=mean(RR),tx.lo=lof(RR),tx.hi=hif(RR)),by=country] #treatment relative to BL
+ice <- merge(ice,txd,by='country')
+
+## multiply most by 100
+vec <- names(ice)
+vec <- vec[!vec %in% c('country','ICER')] #all but country and ICER
+ice[,(vec):=lapply(.SD, function(x) 100*x), .SDcols = vec]
+
+icer <- ice[,.(country=country,
+               treated.soc=100,         #NOTE normalized to 100
+               cost.soc = bracket(cost.soc,cost.soc.lo,cost.soc.hi),
+               treated.int=bracket(tx,tx.lo,tx.hi),
+               cost.int = bracket(cost.int,cost.int.lo,cost.int.hi),
+               treated.dif=bracket(tx-100,tx.lo-100,tx.hi-100),
+               cost.dif=bracket(Dcost,Dcost.lo,Dcost.hi),
+               deaths.dif=bracket(-LS,-LS.hi,-LS.lo),
+               LY0.dif=bracket(dDALY0,dDALY0.lo,dDALY0.hi),
+               LY.dif=bracket(dDALY,dDALY.lo,dDALY.hi),
+               ICER = format(round(ICER),big.mark = ',')
+               )]
+icer
+
+fn1 <- glue(here('outdata/ICERatt')) + SAT + '.csv'
+fwrite(icer,file=fn1)
+
+
+
+## --- ICER tables  by age (as above)
+## ICERs by country & age
+iceage <- T2[,.(cost.soc=mean(cost.soc), #costs
+             cost.soc.lo=lof(cost.soc),
+             cost.soc.hi=hif(cost.soc),
+             cost.int=mean(cost.int),
+             cost.int.lo=lof(cost.int),
+             cost.int.hi=hif(cost.int),
+             Dcost=mean(Dcost),
+             Dcost.lo=lof(Dcost),
+             Dcost.hi=hif(Dcost),
+             ## deaths
+             deaths.soc=mean(deaths.soc),
+             deaths.soc.lo=lof(deaths.soc),
+             deaths.soc.hi=hif(deaths.soc),
+             deaths.int=mean(deaths.int),
+             deaths.int.lo=lof(deaths.int),
+             deaths.int.hi=hif(deaths.int),
+             Ddeaths=mean(deaths.int-deaths.soc),
+             Ddeaths.lo=lof(deaths.int-deaths.soc),
+             Ddeaths.hi=hif(deaths.int-deaths.soc),
+             LS=mean(LS),LS.lo=lof(LS),LS.hi=hif(LS),
+             ## dalys
+             dDALY0=mean(dDALY0),
+             dDALY=mean(dDALY),
+             dDALY.nohiv=mean(dDALY.nohiv),
+             dDALY.hi=hif(dDALY),
+             dDALY.lo=lof(dDALY),
+             dDALY0.hi=hif(dDALY0),
+             dDALY0.lo=lof(dDALY0),
+             ## ICER
+             ICER=mean(Dcost)/mean(dDALY)
+             ),
+          by=.(country,age)]
+txda <- T[,.(tx=mean(RR),tx.lo=lof(RR),tx.hi=hif(RR)),by=.(country,age)] #treatment relative to BL
+iceage <- merge(iceage,txda,by=c('country','age'))
+
+## multiply most by 100
+iceage[,(vec):=lapply(.SD, function(x) 100*x), .SDcols = vec]
+
+icers <- iceage[,.(country=country,age,
+                   treated.soc=100,         #NOTE normalized to 100
+                   cost.soc = bracket(cost.soc,cost.soc.lo,cost.soc.hi),
+                   treated.int=bracket(tx,tx.lo,tx.hi),
+                   cost.int = bracket(cost.int,cost.int.lo,cost.int.hi),
+                   treated.dif=bracket(tx-1,tx.lo-1,tx.hi-1),
+                   cost.dif=bracket(Dcost,Dcost.lo,Dcost.hi),
+                   deaths.dif=bracket(-LS,-LS.hi,-LS.lo),
+                   LY0.dif=bracket(dDALY0,dDALY0.lo,dDALY0.hi),
+                   LY.dif=bracket(dDALY,dDALY.lo,dDALY.hi),
+                   ICER = format(round(ICER),big.mark = ',')
+               )]
+icers
+
+icers[age=='0-4',.(country,treated.int,ICER)]
+
+fn1 <- glue(here('outdata/ICERSatt')) + SAT + '.csv'
+fwrite(icers,file=fn1)
+
+## ---- drivers by variable
+
+## frac, RR, ratios, LE
+## X <- S[age=='0-4',.(iso3,frac)]         #frac
+## X <- merge(X,CK,by='iso3')
+X <- ASM[qty=='tx' & period=='Baseline',
+         .(country,frac=`0-4`/(`0-4`+`5-14`))]
+tmp <- T[,.(RR=mean(RR)),by=.(country,age)]
+tmp <- dcast(tmp,country~age)
+names(tmp)[2:3] <- paste0('RR',names(tmp)[2:3])
+X <- merge(X,tmp,by='country')          #RR
+tmp <- unique(LYK[,.(iso3,age,LYS)])
+tmp <- dcast(tmp,iso3~age,value.var = 'LYS')
+names(tmp)[2:3] <- paste0('LYS',names(tmp)[2:3])
+tmp <- merge(tmp,CK,by='iso3')
+X <- merge(X,tmp,by='country')          #LYS
+tmp <- dcast(KA[,.(iso3,metric,ratio,frac)],
+             iso3~metric,value.var = c('ratio','frac'))
+X <- merge(X,tmp,by='iso3')          #cascade data
+
+## make outcome and covariate data
+Y <- ice[,.(country,ICER,Dcost,dDALY)]
+XM <- melt(X,id=c('iso3','country'))
+XYc <- merge(XM,Y,by='country',all.x=TRUE) #merge together
+
+## make and save plots
+
+## cost
+ggplot(XYc,aes(value,Dcost,col=iso3)) +
+  geom_point() +
+  facet_wrap(~variable,scales = 'free')
+ggsave(here('graphs/drivers_att_cost2.pdf'),h=10,w=10)
+ggsave(here('graphs/drivers_att_cost2.png'),h=10,w=10)
+
+## DALYs
+ggplot(XYc,aes(value,dDALY,col=iso3)) +
+  geom_point() +
+  facet_wrap(~variable,scales = 'free')
+ggsave(here('graphs/drivers_att_DALY.pdf'),h=10,w=10)
+ggsave(here('graphs/drivers_att_DALY.png'),h=10,w=10)
+
+
+
+## part2
+## ================= PT component ============================
+## needs edat, PSA, INT
+PT <- edat[quant=='px']
+
+## format relevant PSA data by age
+PSAage <- PSA[,.(id,prog04,prog514,HHhivprev04,HHhivprev514,
+                 LTBI04,LTBI514)]
+PSAage <- melt(PSAage,id='id')
+PSAage[,age:='5-14']
+PSAage[grepl('04',variable),age:='0-4']
+PSAage[,variable:=gsub('04','',variable)]
+PSAage[,variable:=gsub('514','',variable)]
+PSAage <- dcast(PSAage,id+age~variable)
+
+## relevant PSA data with no age dependence
+PSApt <- PSA[,.(id,hivpi,artp,iptRRtstpos,iptRRhivpos)]
+PSApt <- merge(PSAage,PSApt,by='id')
+
+## merge parameters onto effect data
+PT <- merge(PT,PSApt,by=c('id','age')) #progression/PT etc
+PT <- merge(PT,CFRdatam,by=c('id','age')) #CFRs
+
+## merge in LEs
+PT <- merge(PT,LYK,by=c('country','age'),all.x=TRUE)
+
+## make PSA for country CDRs
+CDRs <- CDR[qty=='cdr']
+CDRs <- CDRs[rep(1:nrow(CDRs),each=max(PSA$id))]
+CDRs[,id:=rep(1:max(PSA$id),nrow(CDRs)/max(PSA$id))]
+CDRs[,sz:=value*(1-value)/cdr.v-1]
+CDRs[,c('a','b'):=.(sz*value,sz*(1-value))]
+CDRs[,cdr0:=rbeta(nrow(CDRs),a,b)]
+CDRs[,cdr:=cdr0] #basecase
+if(SA=='cdr'){   #sensitivity analysis
+    CDRs[,cdr:=runif(nrow(CDRs))]
+    CDRs[,cdr:=cdr0*(1-cdr) + cdr] #interpolate between cdr0 & 1
+}
+CDRs[,summary(cdr)]
+
+## merge in CDRs
+PT <- merge(PT,CDRs[,.(iso3,age,id,cdr)],by=c('iso3','age','id'))
+
+
+## age & HIV-route splits
+## NOTE uncertainty probably not necessary due to large numbers
+## age splits
+tmp <- INT[metric %in% c("PThhcu5pc","PTHIVentryu5pc")]
+tmp <- melt(tmp,id='metric')
+tmp <- dcast(tmp[,.(metric,country=variable,value)],
+             country~metric,value='pc')
+tmp <- tmp[country %in% CK$country]
+hag <- merge(tmp,PTFH[,.(country,ptinhiv)],by='country') #both splits
+hag[,heu5:=ptinhiv*PTHIVentryu5pc/100];hag[,heo5:=ptinhiv*(1-PTHIVentryu5pc/100)]
+hag[,hcu5:=(1-ptinhiv)*PThhcu5pc/100];hag[,hco5:=(1-ptinhiv)*(1-PThhcu5pc/100)]
+hag[,heu5+heo5+hcu5+hco5]               #check
+## combined age/entry-point splits in right format
+hag <- melt(hag[,.(country,heu5,heo5,hcu5,hco5)],id='country')
+hag[,age:='0-4']; hag[grepl('o5',variable),age:='5-14'] #age var
+hag[,route:='hhc']; hag[grepl('he',variable),route:='hentry']
+hag <- dcast(hag[,.(country,value,route,age)],country+age~route,value.var='value')
+
+## outputting cascade data
+hago <- dcast(hag,country~age,value.var = c('hentry','hhc'))
+hago <- merge(hago,PTC,by='country')
+vec <- names(hago)[2:5]
+hago[,(vec):=lapply(.SD, function(x) 100*x), .SDcols = vec]
+vec <- names(hago)[2:6]
+hago[,(vec):=lapply(.SD, function(x) round(x,2)), .SDcols = vec]
+fwrite(hago,file=here('outdata/PTC.csv')) #save as output too
+
+
+## merge into PT data
+PT <- merge(PT,hag,by=c('country','age'),all.x = TRUE)
+## NOTE this is normalized over route x age - age-stratified results will need renorm'n:
+PT[,ptentry:=hentry+hhc]                #denominator for age-stratified calx
+
+
+## ARI assumption for HIV? or similar
+## ab <- getAB(5e-3,(5e-3/1.96)^2)
+## curve(dbeta(x,ab$a,ab$b),from=0,to=1e-2)
+## quantile(rbeta(1e4,ab$a,ab$b),c(0.25,0.75))*1e2
+PT <- merge(PT,PSA[,.(id,ari)],by='id',all.x=TRUE)
+
+## === outcomes
+## NOTE now normalizing by age, for consistency with ATT
+
+## --- no PT outcomes on average
+## cases - stratified by HIV for CFR
+PT[,casesnoPT.hiv:=(hhc/ptentry)*(   #HH route
+  (LTBI*prog)*                       #progn - bl
+  (HHhivprev*hivpi*artp)             #HIV modification
+) +
+  (hentry/ptentry) * (               #HIV-entry
+    ari*prog*                        #prog - bl
+    hivpi*artp                       #HIV modification
+  )
+]
+PT[,casesnoPT.nohiv:=(hhc/ptentry)*(   #HH route
+  (LTBI*prog)*                         #progn - bl
+  (1-HHhivprev)                        #HIV modification
+)
+]
+PT[,casesnoPT:=casesnoPT.hiv + casesnoPT.nohiv]
+
+## treatment
+PT[,attnoPT:=(casesnoPT.hiv+casesnoPT.nohiv) * cdr]
+
+## deaths
+PT[,deathsnoPT:=(
+  casesnoPT.hiv*(cdr*ontxHA+(1-cdr)*notxHA)+
+  casesnoPT.nohiv*(cdr*ontx+(1-cdr)*notx)
+)]
+
+
+## ---  PT outcomes on average
+PT <- merge(PT,ptsuccess,by='country')
+
+## cases
+## 0 here
+## TODO check correct RR applied
+## PT[,casesPT.hiv:=casesnoPT.hiv*iptRRhivpos]
+## PT[,casesPT.nohiv:=casesnoPT.nohiv*iptRRtstpos]
+
+## possibly account for changes in incomplete treatment
+PT[,c('fs','fi'):=1.0]
+if(SA=='txd'){ #sensitivity analysis around completion
+    PT[,c('fs','fi'):=.(BL,INT)]
+}
+
+## NOTE these are separated SOC/INT to allow SA around completion improvement
+## SOC
+PT[,casesPT.hiv.soc:=(hhc/ptentry)*(   #HH route
+    (LTBI*prog)*         #bl progn 
+    (HHhivprev*hivpi*artp)* #HIV/PT modification
+    (iptRRtstpos*fs + 1-fs)  #PT modification
+) +
+    (hentry/ptentry) * (               #HIV-entry
+        ari*prog*                        #prog - bl
+        hivpi*artp                       #HIV modification
+    )*(iptRRhivpos*fs+1-fs)                   #PT
+]
+PT[,casesPT.nohiv.soc:=(hhc/ptentry)*(   #HH route
+    (LTBI*prog)*                         #progn - bl
+    (1-HHhivprev)*(iptRRtstpos*fs+1-fs)           #PT
+)
+]
+PT[,casesPT.soc:=casesPT.hiv.soc + casesPT.nohiv.soc]
+
+## treatment
+PT[,attPT.soc:=(casesPT.hiv.soc+casesPT.nohiv.soc) * cdr]
+
+## deaths
+PT[,deathsPT.soc:=(
+  casesPT.hiv.soc*(cdr*ontxHA+(1-cdr)*notxHA)+
+  casesPT.nohiv.soc*(cdr*ontx+(1-cdr)*notx)
+)]
+
+## INT
+PT[,casesPT.hiv.int:=(hhc/ptentry)*(   #HH route
+    (LTBI*prog)*         #bl progn 
+    (HHhivprev*hivpi*artp)* ## HIV modification
+    (iptRRtstpos*fi+1-fi)  #PT modification
+) +
+    (hentry/ptentry) * (               #HIV-entry
+        ari*prog*                        #prog - bl
+        hivpi*artp                       #HIV modification
+    )*(iptRRhivpos*fi+1-fi)                        #PT
+]
+PT[,casesPT.nohiv.int:=(hhc/ptentry)*(   #HH route
+    (LTBI*prog)*                         #progn - bl
+    (1-HHhivprev)*(iptRRtstpos*fi+1-fi)           #PT
+)
+]
+PT[,casesPT.int:=casesPT.hiv.int + casesPT.nohiv.int]
+
+## treatment
+PT[,attPT.int:=(casesPT.hiv.int+casesPT.nohiv.int) * cdr]
+
+## deaths
+PT[,deathsPT.int:=(
+    casesPT.hiv.int*(cdr*ontxHA+(1-cdr)*notxHA)+
+    casesPT.nohiv.int*(cdr*ontx+(1-cdr)*notx)
+)]
+
+##  --- costs
+## NOTE next one, maybe 2 paras could go into modeldata.R
+## cost data relevant to PT
+akeep <- c('Presumptive TB evaluation','TPT treatment',
+           'TB treatment',"TB contact investigation")
+CD <- CD[Activity %in% akeep,.(iso3,Activity,uc.soc,uc.soc.sd,uc.int)]
+CD[is.na(CD)] <- 0
+CD[Activity==akeep[1],act:='a.tbe']
+CD[Activity==akeep[2],act:='a.tpt']
+CD[Activity==akeep[3],act:='a.att']
+CD[Activity==akeep[4],act:='a.hct']
+
+## NOTE correction here
+corfac <- merge(corfac,CK,by='country')
+
+tmp <- CD[act=='a.hct'] #listed as contact investigation
+tmp <- merge(tmp,corfac[,.(iso3,scale)],by='iso3')
+tmp[,uc.int:=scale*uc.int]; tmp[,scale:=NULL]
+tmp[,act:='a.thct']; tmp[,Activity:='True HHCT']
+CD <- rbind(CD,tmp)
+
+
+CD1 <- copy(CD) #so doesn't break on re-running
+CD1[,Activity:=NULL]
+CD1[uc.soc.sd==0,uc.soc.sd:=1.0] #safety
+if(SA=='hhc'){ #sensitivity analysis on SOC hhcost
+    CD1[act=='a.thct',uc.soc:=10.0]
+}
+
+## extend to PSA
+nr <- nrow(CD1)
+CDp <- CD1[rep(1:nr,each=max(PT$id))]
+CDp[,id:=rep(1:max(PT$id),nr)]
+CDp[,socu:=rgamma(nrow(CDp),shape=(uc.soc/uc.soc.sd)^2,
+                  scale=uc.soc.sd^2/uc.soc)]
+CDp[,intu:=socu + uc.int] #NOTE intu aren't incremental now
+CDp <- CDp[,.(iso3,id,act,socu,intu)]
+CDp <- dcast(CDp,iso3+id~act,value.var=c('socu','intu'))
+
+## merge in
+PT <- merge(PT,CDp,by=c('iso3','id'))    #costs
+PT <- merge(PT,PTC,by='country',all.x=TRUE) #cascade
+
+## calculate costs NOTE normalized for each row, not over ages
+## ## PT costs
+## PT[,costPT.soc:= (hhc/ptentry)*traceperhhcpt*socu_a.hct +
+##         (1-hhc/ptentry)*socu_a.tbe + socu_a.tpt]
+## PT[,costPT.int:= (hhc/ptentry)*traceperhhcpt*intu_a.hct +
+##     (1-hhc/ptentry)*intu_a.tbe + intu_a.tpt]
+
+## PT costs NOTE corrected version
+PT[,costPT.soc:= (hhc/ptentry)*traceperhhcpt*socu_a.thct +
+        (1-hhc/ptentry)*socu_a.hct + socu_a.tpt]
+PT[,costPT.int:= (hhc/ptentry)*traceperhhcpt*intu_a.thct +
+        (1-hhc/ptentry)*intu_a.hct + intu_a.tpt]
+
+
+## --- ACF here
+## should be getting ~6 per 100 index cases across ages
+## NOTE be careful to get right numbers actoss ages:
+## for a u5 PT -> traceperhhcpt -> u5 & o5 screens etc
+## for a o5 PT -> traceperhhcpt -> u5 & o5 screens etc
+## => NOTE need to sum & attach to both u5 & o5 before aggregating
+## complication that age in data structure is about PT, need to add
+## across ages for coprev stuff & attach to each row/PT-age
+## needs care to sum before applying RR - effect pertains to PT-age
+## not contact-age
+## ptentry gives the proportion of PT for each age group
+PT[,.(sum(ptentry),sum(hhc)),by=.(id,country)]
+
+## total index cases, summing over ages:
+## PT[,totindexscreen := sum(ptentry*traceperhhcpt),by=.(id,country)]
+## include here fraction of PT that is HH route
+PT[,totindexscreen := traceperhhcpt*(hhc/ptentry)] #think this correct - weighted @end
+
+## merge in HHCM cascade in right form (this splits out by age again)
+hhcascade <- dcast(HHCM[age %in% c('0-4','5-14')],age~activity)
+PT <- merge(PT,hhcascade,by='age',all.x=TRUE)
+
+
+## coprevalent detectable children
+PT[,coprev:=totindexscreen*Diagnosed] #numbers coprevalent
+PT[,coprev:=sum(coprev),by=.(id,country)] #sum over ages - per PT
+PT[,mean(coprev)]                         #NOTE includes non-hhc PT
+
+## deaths RR included later
+PT[,deathsPrev.soc:= totindexscreen*Diagnosed*(
+    HHhivprev*(cdr*ontxHA+(1-cdr)*notxHA)+
+    (1-HHhivprev)*(cdr*ontx+(1-cdr)*notx)
+)] #using relevant background CDR
+PT[,deathsPrev.int:= totindexscreen*Diagnosed*(
+    HHhivprev*(1.0*ontxHA+(1-1.0)*notxHA)+
+    (1-HHhivprev)*(1.0*ontx+(1-1.0)*notx)
+)] #using 100% CDR
+PT[,c('deathsPrev.soc','deathsPrev.int'):=.(sum(deathsPrev.soc),
+                                            sum(deathsPrev.int)),
+   by=.(id,country)] #sum over ages - per PT
+
+## cost (not including thct)
+PT[,costACF.soc.hh:= ## coprev HHCM'd
+    totindexscreen*(Screened*socu_a.hct +
+                       Presumptive*socu_a.tbe +
+                       Diagnosed*socu_a.att)]
+PT[,costACF.soc.nhh:=
+        ## coprev not HHCM'd - not including PHC screening cost
+        (totindexscreen*Diagnosed*cdr*(socu_a.att+socu_a.tbe))]
+PT[,costACF.int.hh:= ## coprev HHCM'd
+    totindexscreen*(Screened*intu_a.hct +
+                    Presumptive*intu_a.tbe +
+                    Diagnosed*intu_a.att)]
+PT[,c('costACF.soc.hh','costACF.soc.nhh','costACF.int'):=
+        .(sum(costACF.soc.hh),
+          sum(costACF.soc.nhh),
+          sum(costACF.int.hh)),
+   by=.(id,country)] #sum over ages - per PT
+
+
+## ATT
+PT[,ATTACF.hh:=totindexscreen*(Diagnosed)]
+PT[,ATTACF.nhh:=totindexscreen*(Diagnosed)*cdr]
+PT[,c('ATTACF.hh','ATTACF.nhh'):=.(sum(ATTACF.hh),
+                                   sum(ATTACF.nhh)),
+   by=.(id,country)] #sum over ages - per PT
+
+## --- NOTE now applying RRs to aggregated totals to include
+## both contact-age groups
+PT[,costACF.soc:= 1*costACF.soc.hh + (RR-1)*costACF.soc.nhh]
+PT[,costACF.int:= RR*costACF.int.hh + 0*0]
+PT[,ATTACF.soc:= 1*ATTACF.hh + (RR-1)*ATTACF.nhh]
+PT[,ATTACF.int:= RR*ATTACF.hh + 0*ATTACF.nhh]
+## deaths - how much of which condition (no age sum as already done)
+PT[,deathsACF.soc:=1*deathsPrev.int + (RR-1)*deathsPrev.soc]
+PT[,deathsACF.int:=RR*deathsPrev.int + 0*deathsPrev.soc]
+PT[,LSACF:=-(deathsACF.int-deathsACF.soc)]
+## add in DALYs etc
+PT[,c('dDALYacf','dDALY0acf'):=.(LYS*LSACF,LYS0*LSACF)]
+
+
+## NOTE assumption of same age split under SOC - tot pop RR
+## outcomes:
+## cost
+PT[,cost.soc:=(1*costPT.soc+(RR-1)*0) + #PT cost, includes hhc or tbe
+        (1*attPT.soc+(RR-1)*attnoPT*socu_a.att)] #ATT cost
+PT[,cost.int:=(RR*costPT.int+0*0) + #PT cost, includes hhc or tbe
+        (RR*attPT.int+0*attnoPT*intu_a.att)] #ATT cost
+## cases
+PT[,cases.soc:=1*casesPT.soc + (RR-1)*casesnoPT]
+PT[,cases.int:=RR*casesPT.int + 0*casesnoPT]
+## ATT
+PT[,ATT.soc:=cases.soc*cdr]
+PT[,ATT.int:=cases.int*cdr]
+## deaths
+PT[,deaths.soc:=1*deathsPT.soc + (RR-1)*deathsnoPT]
+PT[,deaths.int:=RR*deathsPT.int + 0*deathsnoPT]
+PT[,LS:=-(deaths.int-deaths.soc)]
+## add in DALYs etc
+PT[,c('dDALY','dDALY0'):=.(LYS*LS,LYS0*LS)]
+
+## ACF cascade NOTE must include only hh PT
+## denominators haven't been summed over PT-age, hhc correct split
+## coprev weighted by hh/ptentry - needs ptentry to weight PT-age
+tmp <- PT[,.(cppt=(sum(coprev*ptentry)/sum(hhc)), #per HH PT initiation
+             ## per index traced
+             cpit=(sum(coprev*ptentry)/sum(hhc*traceperhhcpt)),
+             ## per presumed
+             cppe=sum(coprev*ptentry)/sum(hhc*traceperhhcpt*Presumptive),
+             ## per screened
+             cpcs=sum(coprev*ptentry)/sum(hhc*traceperhhcpt*Screened)
+      ),
+      by=.(id,country)]
+clz <- grep('cp',names(tmp),value=TRUE)
+acfcascade <- tmp[,lapply(.SD,function(x)1e2*mean(x)),
+                  by=country,.SDcols=clz]
+
+fn <- glue(here('outdata/ACFcascade')) + SA + '.' + ACF + '.csv'
+fwrite(acfcascade,file=fn)
+
+## adding in ACF if included
+if(ACF>0){
+    PT[,cost.soc:=cost.soc + costACF.soc]
+    PT[,cost.int:=cost.int + costACF.int]
+    ## cases NOTE left same = incidence
+    PT[,cases.soc:=cases.soc]
+    PT[,cases.int:=cases.int]
+    ## ATT
+    PT[,ATT.soc:=ATT.soc + ATTACF.soc]
+    PT[,ATT.int:=ATT.int + ATTACF.int]
+    ## deaths
+    PT[,deaths.soc:=deaths.soc + deathsACF.soc]
+    PT[,deaths.int:=deaths.int + deathsACF.int]
+    PT[,LS:=LS + LSACF]
+    ## add in DALYs etc
+    PT[,c('dDALY','dDALY0'):=.(dDALY+dDALYacf,dDALY0+dDALY0acf)]
+}
+
+## OK to multiply by ptentry - this is split across PT-ages
+## ## save out if needed
+## save(PT,file=here("data/PT.Rdata"))
+
+## aggregate results
+PT1 <- PT[,.(cost.soc=sum(cost.soc*ptentry),
+             cost.int=sum(cost.int*ptentry),
+             cases.soc=sum(cases.soc*ptentry),
+             cases.int=sum(cases.int*ptentry),
+             ATT.soc=sum(ATT.soc*ptentry),
+             ATT.int=sum(ATT.int*ptentry),
+             numPT.int=sum(RR*ptentry),
+             Dcost=sum(cost.int*ptentry)-sum(cost.soc*ptentry),
+             LS=sum(LS*ptentry),
+             deaths.soc=sum(deaths.soc*ptentry),
+             deaths.int=sum(deaths.int*ptentry),
+             dDALY0=sum(dDALY0*ptentry),
+             dDALY=sum(dDALY*ptentry)),
+          by=.(country,id)]
+PT1 <- merge(PT1,CK,by='country') #country iso3 merged on
+
+## same with age - basically just consistent renaming
+PT2 <- PT[,.(cost.soc=(cost.soc),
+             cost.int=(cost.int),
+             cases.soc=(cases.soc),
+             cases.int=(cases.int),
+             ATT.soc=(ATT.soc),
+             ATT.int=(ATT.int),
+             numPT.int=(RR),
+             Dcost=(cost.int)-(cost.soc),
+             LS=(LS),
+             deaths.soc=(deaths.soc),
+             deaths.int=(deaths.int),
+             dDALY0=(dDALY0),
+             dDALY=(dDALY)),
+          by=.(country,age,id)]
+PT2 <- merge(PT2,CK,by='country') #country iso3 merged on
+
+
+## --- CEA and CEAC plots ---
+
+## CEA plot
+ggplot(PT1,aes(dDALY,Dcost)) +
+    geom_vline(xintercept = 0)+
+    geom_hline(yintercept = 0)+
+    geom_point(alpha=0.1,shape=1) +
+    geom_abline(data=CETM[threshold %in% c("0.5x GDP","1x GDP")],
+                aes(intercept=0,slope=value,col=threshold))+
+    facet_wrap(~country) +
+    scale_y_continuous(label=comma) +
+    xlab('Incremental discounted life-years saved')+
+    ylab('Incremental cost (USD)')+
+    theme(legend.position = "top" )
+
+## save out
+fn1 <- glue(here('graphs/CEallPT')) + SA + '.' + ACF + '.png'
+fn2 <- glue(here('graphs/CEallPT')) + SA + '.' + ACF + '.pdf'
+ggsave(file=fn1,w=10,h=10); ggsave(file=fn2,w=10,h=10)
+
+
+## make CEAC data
+lz <- seq(from = 0,to=ceactop,length.out = 1000)
+pceacd <- list()
+for(iso in unique(PT1$iso3)){
+    tmp <- PT1[iso3==iso,.(Q=dDALY,P=Dcost)]
+    pceacd[[iso]] <- data.table(
+        iso3=iso,x=lz,
+        y=make.ceac(tmp,lz))
+}
+pceacd <- rbindlist(pceacd)
+
+## make CEAC plot
+PCEAC <- make.ceac.plot(pceacd,xpad=50)
+PCEAC
+
+## save out
+fn1 <- glue(here('graphs/CEACpt')) + SA + '.' + ACF + '.png'
+fn2 <- glue(here('graphs/CEACpt')) + SA + '.' + ACF + '.pdf'
+ggsave(file=fn1,w=10,h=10); ggsave(file=fn2,w=10,h=10)
+
+
+## output where things X 50%
+tmp <- pceacd[abs(y-0.5)<5e-2] #NOTE may need tuning if sample changes
+tmp[,err:=abs(y-0.5)]
+tmp[,ermin:=min(err),by=iso3]
+tmp <- tmp[err==ermin]
+tmp <- tmp[,.(iso3,ceac50=round(x))]
+tmp
+fn <- glue(here('outdata/CEAC50pt')) + SA + '.' + ACF + '.csv'
+fwrite(tmp,file=fn)
+
+## ICERs by country
+pice <- PT1[,.(numPT.soc=1,
+               cost.soc=mean(cost.soc),
+               cost.soc.lo=lof(cost.soc),
+               cost.soc.hi=hif(cost.soc),
+               ## int
+               numPT.int=mean(numPT.int),
+               numPT.int.lo=lof(numPT.int),
+               numPT.int.hi=hif(numPT.int),
+               cost.int=mean(cost.int),
+               cost.int.lo=lof(cost.int),
+               cost.int.hi=hif(cost.int),
+               ## dif
+               DnumPT=mean(numPT.int-1), #numbers PT
+               DnumPT.lo=lof(numPT.int-1),
+               DnumPT.hi=hif(numPT.int-1),
+               Dcases=mean(cases.int-cases.soc), #TB cases
+               Dcases.lo=lof(cases.int-cases.soc), #TB cases
+               Dcases.hi=hif(cases.int-cases.soc), #TB cases
+               Datt=mean(ATT.int-ATT.soc),   #ATT
+               Datt.lo=lof(ATT.int-ATT.soc),   #ATT
+               Datt.hi=hif(ATT.int-ATT.soc),   #ATT
+               Ddeaths=-mean(LS), #deaths
+               Ddeaths.lo=-hif(LS), #deaths
+               Ddeaths.hi=-lof(LS), #deaths
+               Dcost=mean(Dcost),
+               Dcost.lo=lof(Dcost),
+               Dcost.hi=hif(Dcost),
+               ## dalys
+               dDALY0=mean(dDALY0),
+               dDALY0.hi=hif(dDALY0),
+               dDALY0.lo=lof(dDALY0),
+               dDALY=mean(dDALY),
+               dDALY.hi=hif(dDALY),
+               dDALY.lo=lof(dDALY),
+               ## ICER
+               ICER=mean(Dcost)/mean(dDALY)
+               ),
+            by=country]
+
+## multiply most by 100
+vec <- names(pice)
+vec <- vec[!vec %in% c('country','ICER')] #all but country and ICER
+pice[,(vec):=lapply(.SD, function(x) 100*x), .SDcols = vec]
+
+## table output
+picer <- pice[,.(country=country,
+                    numPT.soc=paste0(numPT.soc),
+                    cost.soc=bracket(cost.soc,cost.soc.lo,cost.soc.hi),
+                    numPT.int=bracket(numPT.int,numPT.int.lo,
+                                      numPT.int.hi),
+                    cost.int=bracket(cost.int,cost.int.lo,cost.int.hi),
+                    DnumPT=bracket(DnumPT,DnumPT.lo,DnumPT.hi),
+                    Dcases=bracket(Dcases,Dcases.lo,Dcases.hi),
+                    Datt=bracket(Datt,Datt.lo,Datt.hi),
+                    Ddeaths=bracket(Ddeaths,Ddeaths.lo,Ddeaths.hi),
+                    LY0.dif=bracket(dDALY0,dDALY0.lo,dDALY0.hi),
+                    LY.dif=bracket(dDALY,dDALY.lo,dDALY.hi),
+                    ICER = format(round(ICER),big.mark = ',')
+               )]
+picer
+
+fn <- glue(here('outdata/ICERpt')) + SA +'.' + ACF + '.csv'
+fwrite(picer,file=fn)
+
+piceage <- PT2[,.(numPT.soc=1,
+               cost.soc=mean(cost.soc),
+               cost.soc.lo=lof(cost.soc),
+               cost.soc.hi=hif(cost.soc),
+               ## int
+               numPT.int=mean(numPT.int),
+               numPT.int.lo=lof(numPT.int),
+               numPT.int.hi=hif(numPT.int),
+               cost.int=mean(cost.int),
+               cost.int.lo=lof(cost.int),
+               cost.int.hi=hif(cost.int),
+               ## dif
+               DnumPT=mean(numPT.int-1), #numbers PT
+               DnumPT.lo=lof(numPT.int-1),
+               DnumPT.hi=hif(numPT.int-1),
+               Dcases=mean(cases.int-cases.soc), #TB cases
+               Dcases.lo=lof(cases.int-cases.soc), #TB cases
+               Dcases.hi=hif(cases.int-cases.soc), #TB cases
+               Datt=mean(ATT.int-ATT.soc),   #ATT
+               Datt.lo=lof(ATT.int-ATT.soc),   #ATT
+               Datt.hi=hif(ATT.int-ATT.soc),   #ATT
+               Ddeaths=-mean(LS), #deaths
+               Ddeaths.lo=-hif(LS), #deaths
+               Ddeaths.hi=-lof(LS), #deaths
+               Dcost=mean(Dcost),
+               Dcost.lo=lof(Dcost),
+               Dcost.hi=hif(Dcost),
+               ## dalys
+               dDALY0=mean(dDALY0),
+               dDALY0.hi=hif(dDALY0),
+               dDALY0.lo=lof(dDALY0),
+               dDALY=mean(dDALY),
+               dDALY.hi=hif(dDALY),
+               dDALY.lo=lof(dDALY),
+               ## ICER
+               ICER=mean(Dcost)/mean(dDALY)
+               ),
+            by=.(country,age)]
+
+## multiply most by 100
+vec <- names(piceage)
+vec <- vec[!vec %in% c('country','age','ICER')] #all but country and ICER
+piceage[,(vec):=lapply(.SD, function(x) 100*x), .SDcols = vec]
+
+## table output
+picers <- piceage[,.(country=country,
+                     age=age,
+                     numPT.soc=paste0(numPT.soc),
+                     cost.soc=bracket(cost.soc,cost.soc.lo,cost.soc.hi),
+                     numPT.int=bracket(numPT.int,numPT.int.lo,
+                                       numPT.int.hi),
+                     cost.int=bracket(cost.int,cost.int.lo,cost.int.hi),
+                     DnumPT=bracket(DnumPT,DnumPT.lo,DnumPT.hi),
+                     Dcases=bracket(Dcases,Dcases.lo,Dcases.hi),
+                     Datt=bracket(Datt,Datt.lo,Datt.hi),
+                     Ddeaths=bracket(Ddeaths,Ddeaths.lo,Ddeaths.hi),
+                     LY0.dif=bracket(dDALY0,dDALY0.lo,dDALY0.hi),
+                     LY.dif=bracket(dDALY,dDALY.lo,dDALY.hi),
+                     ICER = format(round(ICER),big.mark = ',')
+               )]
+picers
+
+picers[age=='0-4',.(country,numPT.int,ICER)]
+
+fn <- glue(here('outdata/ICERagept')) + SA + '.' + ACF + '.csv'
+fwrite(picers,file=fn)
+
+
+## TODO cross check cost SOC PT - seems different
+
+
+## ================= BOTH components ============================
+## want weighting during baseline
+PTT <- merge(T1[,.(country,iso3,id,Dcost.att=Dcost,dDALY.att=dDALY)],
+             PT1[,.(country,iso3,id,Dcost.pt=Dcost,dDALY.pt=dDALY)],
+             by=c('country','iso3','id'))
+PTT <- merge(PTT,BC[,.(country=Country,BR)],by='country') #weight
+
+PTT[,Dcost:=Dcost.att*BR/(1+BR) + Dcost.pt*1/(1+BR)] #weighted costs
+PTT[,dDALY:=dDALY.att*BR/(1+BR) + dDALY.pt*1/(1+BR)] #weighted DALYs
+
+
+## CEA plot
+ggplot(PTT,aes(dDALY,Dcost)) +
+    geom_vline(xintercept = 0)+
+    geom_hline(yintercept = 0)+
+    geom_point(alpha=0.1,shape=1) +
+    geom_abline(data=CETM[threshold %in% c("0.5x GDP","1x GDP")],
+                aes(intercept=0,slope=value,col=threshold))+
+    facet_wrap(~country) +
+    scale_y_continuous(label=comma) +
+    xlab('Incremental discounted life-years saved')+
+    ylab('Incremental cost (USD)')+
+    theme(legend.position = "top" )
+
+## save out
+fn1 <- glue(here('graphs/CEallALL')) + SA + '.' + ACF + '.png'
+fn2 <- glue(here('graphs/CEallALL')) + SA + '.' + ACF + '.pdf'
+ggsave(file=fn1,w=10,h=10); ggsave(file=fn2,w=10,h=10)
+
+
+## make CEAC data
+lz <- seq(from = 0,to=ceactop,length.out = 1000)
+pceacd <- list()
+for(iso in unique(PT1$iso3)){
+    tmp <- PTT[iso3==iso,.(Q=dDALY,P=Dcost)]
+    pceacd[[iso]] <- data.table(
+        iso3=iso,x=lz,
+        y=make.ceac(tmp,lz))
+}
+pceacd <- rbindlist(pceacd)
+
+## make CEAC plot
+PCEAC <- make.ceac.plot(pceacd,xpad=50)
+PCEAC
+
+## save out
+fn1 <- glue(here('graphs/CEACall')) + SA + '.' + ACF + '.png'
+fn2 <- glue(here('graphs/CEACall')) + SA + '.' + ACF + '.pdf'
+ggsave(file=fn1,w=10,h=10); ggsave(file=fn2,w=10,h=10)
+
+
+##  combined ICERS
+iceb <- PTT[,.(ICER=mean(Dcost)/mean(dDALY)),
+          by=.(country,iso3)]
+
+icebrr <- iceb[,.(country,iso3,
+                  ICER = format(round(ICER),big.mark = ',') )]
+icebrr
+
+fn <- glue(here('outdata/ICERall')) + SA + '.' + ACF + '.csv'
+fwrite(icebrr,file=fn)
+
+## ================= TODO list ============================
+
+
+## TODO run with different seed and check stable
+
+## ATT:
+## delta-CFR lower for HIV+ 5-14 decide on approach
+## tx outcome data from report? - improves over BL
+
+
+## PT:
+## model case-finding??
+## discounting outcomes?
+
+
+## TODO: questions in relation to parametrization and intervention
+## TB cases in HH??
+## unit costs HIV vs HHCM?
+## miliary, TBM ATT costs?
+## check parms
+
+
+## TODO: data
+## check new bac +, tx outcome and CXR
+
+

@@ -1,0 +1,24 @@
+value,activity,age,mode
+47139,index cases,,
+25944,estimated B+ PTB index cases,,
+17990,estimated TPT-eligible contacts <5 years,,
+13533,index cases with HHCM,,
+31515,household contacts screened,,
+4661,Screened,0-4,facility
+725,Presumptive,0-4,facility
+110,Diagnosed,0-4,facility
+11285,Screened,0-4,household
+725,Presumptive,0-4,household
+244,Diagnosed,0-4,household
+7422,Screened,0-14,facility
+1503,Presumptive,0-14,facility
+223,Diagnosed,0-14,facility
+24093,Screened,0-14,household
+1546,Presumptive,0-14,household
+558,Diagnosed,0-14,household
+2761,Screened,5-14,facility
+778,Presumptive,5-14,facility
+113,Diagnosed,5-14,facility
+12808,Screened,5-14,household
+821,Presumptive,5-14,household
+314,Diagnosed,5-14,household

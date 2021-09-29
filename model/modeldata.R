@@ -59,6 +59,7 @@ save(countrykey,file=here('data/countrykey.Rdata'))
 discount.rate <- 0.03
 ## make life-years
 fn <- here('data/LYK.Rdata')
+
 if(TRUE){## if(!file.exists(fn)){
     ## calculate discounted life-years
     ## template:
@@ -104,11 +105,13 @@ correctype <- function(x) if(is.character(x[1])){ as.numeric(gsub(",","",x))} el
 rnmz <- names(RI)[c(-1)]
 RI[,(rnmz) := lapply(.SD,correctype),.SDcols=rnmz] #remove "," and convert char to num
 
+## melted inverention cascade data
 names(RI)[names(RI)=='CDI'] <- "Cote d'Ivoire"
 RIM <- melt(RI,id='metric')
 names(RIM)[2] <- 'country'
 RIM <- RIM[metric!='Number of sites reporting']
 
+## item row names
 ptv <- c('Number of Index cases with contact tracing done',
          'PT initiation among HIV entry point',
          'PT initiation among contacts',
@@ -122,14 +125,15 @@ attvn <- c("bacpos","bacposu5","bacposu5pc","TxDenom","TxSuccess",
            "TxSuccesspc")
 otherv <- c("CXRamongclindx")
 
-## NOTE correction factor for
+## NOTE correction factor
+## ratio of screening to index cases
 corfac <- RIM[metric %in% c(ptv[1],attv[1])]
 corfac <- dcast(corfac,country ~ metric,value.var = 'value')
 corfac[,scale:=`Screened for symptoms` / `Number of Index cases with contact tracing done`]
 corfac <- corfac[country %in% cns,.(country,scale)]
 save(corfac,file=here('data/corfac.Rdata'))
 
-## restrict to particular intervention
+## restrict to particular intervention (ie ATT or TPT focussed)
 PTT <- RIM[metric %in% ptv]
 ATT <- RIM[metric %in% attv]
 atv <- RIM[1:5,metric]
@@ -138,6 +142,8 @@ ATT$metric <- factor(ATT$metric,levels=atv,ordered = TRUE)
 ATT <- ATT[country %in% cns] #restrict
 PTT <- PTT[country %in% cns] #restrict
 
+## NOTE setting CIV to no HIV-entry point PT? TODO check
+PTT[is.na(value),value:=0]
 
 ## absolute
 ggplot(ATT,aes(metric,value,fill=metric)) +
@@ -172,7 +178,7 @@ PTC <- PTC[,.(country,traceperhhcpt)]
 
 save(PTC,file=here('data/PTC.Rdata'))
 
-## what proportion of PT is via HIV
+## what proportion of PT is via HIV?
 PTFH <- PTT[metric %in% ptv[c(2,4)]]
 PTFH[,tot:=sum(value),by=country]
 PTFH <- PTFH[metric==ptv[2]]
@@ -180,17 +186,20 @@ PTFH <- PTFH[,.(country,ptinhiv=value/tot,hiv=value,allpt=tot)]
 
 save(PTFH,file=here('data/PTFH.Rdata'))
 
+## PT age splits
 PTTn <- RIM[metric %in% ptvn]
 PTTn <- PTTn[country %in% cns]
 PTTn[is.na(value),value:=0]
 
 save(PTTn,file=here('data/PTTn.Rdata'))
 
+## ATT success and tx chars
 ATTn <- RIM[metric %in% attvn]
 ATTn <- ATTn[country %in% cns]
 
 save(ATTn,file=here('data/ATTn.Rdata'))
 
+## intervention cascade
 ## relative
 ATR <- copy(ATT)
 ATR[metric=='Treated for DS-TB',tx:=value,by=country]
@@ -214,7 +223,9 @@ ggsave(filename=here('graphs/intervention_cascade.png'),
 ATR <- ATR[,.(metric,country,frac)]
 save(ATR,file=here('data/ATR.Rdata')) #cascade
 
-## output cascade data 
+
+## TODO need new countries
+## output cascade data: costs
 CD <- fread(here('indata/TIPPIresults - costs.csv'))
 CD[,iso3:=gsub('DRC','COD',Country)]
 CD <- CD[iso3!='']
@@ -388,10 +399,11 @@ DBC <- DBC[,.(country,metric,ratio)]
 
 exns <- ATR[,unique(country)]
 ## exclude countries that have a ratio
-exns <- exns[!exns %in% c(#'Kenya','Lesotho',
-                            'Malawi',
-                            'Uganda',
-                            'Zimbabwe')]
+exns <- exns[!exns %in% c('Kenya',
+                          'Lesotho',
+                          'Malawi',
+                          'Uganda',
+                          'Zimbabwe')]
 exns <- as.character(exns)
 mrcs <- ATR[,unique(metric)]
 mrcs <- mrcs[grepl('Presumptive',mrcs)]
@@ -547,6 +559,7 @@ CDR[,rel.sd:=NULL]
 
 save(CDR,file=here('data/CDR.Rdata'))
 
+## Figure 1
 ## HHCM ACF
 ## 
 ## 0-4 screened at facility = 4661 (60.1%)
@@ -611,4 +624,4 @@ fwrite(HHCM,file=here('data/HHCM.csv'))
 save(HHCM,file=here('data/HHCM.Rdata'))
 
 ## TODO questions
-## HIV mix -- different under intervention
+## HIV mix -- different under intervention?

@@ -1,0 +1,31 @@
+Country,Activity,Unit cost (SoC),Incremental unit cost,uc.soc,uc.soc.sd,uc.int
+CIV,TB contact investigation,0,2.28,0,,2.28
+CIV,Presumptive TB evaluation,3.52 (1.51),47.72,3.52,-1.51,47.72
+CIV,Sample collection,1.29 (0.005),90.45,1.29,-0.005,90.45
+CIV,Xpert testing,26.00 (12.67),50.37,26,-12.67,50.37
+CIV,TB treatment,95.25 (45.11),175.84,95.25,-45.11,175.84
+CIV,TPT treatment,26.89 (12.19),65.3,26.89,-12.19,65.3
+COD,TB contact investigation,0,4.61,0,,4.61
+COD,Presumptive TB evaluation,1.54 (0.62),9.2,1.54,-0.62,9.2
+COD,Sample collection,1.65 (0.006),104.83,1.65,-0.006,104.83
+COD,Xpert testing,33.24 (16.20),26.79,33.24,-16.2,26.79
+COD,TB treatment,75.49 (36.26),4.56,75.49,-36.26,4.56
+COD,TPT treatment,17.01 (7.76),56.2,17.01,-7.76,56.2
+MWI,TB contact investigation,0,0.88,0,,0.88
+MWI,Presumptive TB evaluation,1.14 (0.45),14.02,1.14,-0.45,14.02
+MWI,Sample collection,1.21 (0.004),139.1,1.21,-0.004,139.1
+MWI,Xpert testing,24.40 (11.89),22.58,24.4,-11.89,22.58
+MWI,TB treatment,71.52 (34.55),20.78,71.52,-34.55,20.78
+MWI,TPT treatment,15.02 (34.55),11.97,15.02,-34.55,11.97
+UGA,TB contact investigation,0,1.99,0,,1.99
+UGA,Presumptive TB evaluation,2.02 (0.83),34.39,2.02,-0.83,34.39
+UGA,Sample collection,1.13 (0.004),60.26,1.13,-0.004,60.26
+UGA,Xpert testing,22.82 (11.12),26.33,22.82,-11.12,26.33
+UGA,TB treatment,80.29 (38.36),85.45,80.29,-38.36,85.45
+UGA,TPT treatment,19.41 (8.81),37.27,19.41,-8.81,37.27
+ZWE,TB contact investigation,0,1.05,0,,1.05
+ZWE,Presumptive TB evaluation,3.43 (1.47),69.04,3.43,-1.47,69.04
+ZWE,Sample collection,1.61 (0.006),156.39,1.61,-0.006,156.39
+ZWE,Xpert testing,32.44 (15.81),13.6,32.44,-15.81,13.6
+ZWE,TB treatment,94.37 (44.70),677.75,94.37,-44.7,677.75
+ZWE,TPT treatment,26.45 (11.98),75.14,26.45,-11.98,75.14

@@ -88,12 +88,15 @@ if(TRUE){## if(!file.exists(fn)){
 }
 
 
-## ===== TODO up to here
-## BL data etc: blextract1.csv  blextract2.csv  resoure.int.csv
+## ===== CASCADE DATA
+## blextract1.csv  blextract2.csv  resoure.int.csv
+## baseline cascade data TODO locate in report
 fn <- here('indata/blextract1.csv')
 B1 <- fread(fn)
 fn <- here('indata/blextract2.csv')
 B2 <- fread(fn)
+## cascades & resources during intervention
+## - from 'cascade data for Nyasha' spreadsheet
 fn <- here('indata/resource.int.csv')
 RI <- fread(fn)
 str(RI)

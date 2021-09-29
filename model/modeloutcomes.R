@@ -8,10 +8,13 @@ library(ggthemes)
 library(scales)
 library(glue)
 
+## TODO take flags as inputs and script overall use
+
 ## for CEAC plotting
 source(here('../dataprep/tippifunctions.R'))
 
-## data
+## ===== INPUT DATA
+## these are made by modeldata.R
 load(file=here('data/edat.Rdata')) #effect data
 load(file=here('data/LYK.Rdata'))  #LYs discounted
 load(file=here('data/DBCE.Rdata')) #ratios int v bl
@@ -22,15 +25,14 @@ load(file=here('data/H.Rdata')) #HIV - not so relevant
 load(file=here('data/PTFH.Rdata')) #PT from HIV split
 load(file=here('data/PTC.Rdata')) #PT cascade
 load(file=here('data/CD.Rdata'))  #rawer cost data
-load(file=here('data/ASM.Rdata')) #age splits
-load(file=here('data/BC.Rdata')) #PT v ATT split
+load(file=here('data/ASM.Rdata')) #age splits  TODO missing
+load(file=here('data/BC.Rdata')) #PT v ATT split   TODO missing
 load(file=here('data/corfac.Rdata'))          #HH v ATT screen factor
 load(file=here('data/HHCM.Rdata'))            #HHCM cascade
-BL <- fread(here('indata/blextract1.csv'))   #BL extract HIV
-INT <- fread(here('indata/resource.int.csv')) #INT cascade data
-names(INT)[names(INT)=='CDI'] <- "Cote d'Ivoire"
-CET <- fread(here('indata/TIPPIresults - CEthresholds.csv'))#CE thresholds
-PD <- read.csv(here('indata/TIPPIresults - TIPPIparms.csv')) #modelling parmeters
+load(file=here('data/BL.Rdata'))           #BL extract HIV
+load(file=here('data/INT.Rdata'))         #INT cascade data
+load(file=here('data/CET.Rdata'))         #CE thresholds
+load(file=here('data/PD.Rdata'))           #modelling parmeters
 PZ <- parse.parmtable(PD)                     #make into parm object
 
 ## --- settings

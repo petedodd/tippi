@@ -623,5 +623,21 @@ HHCM <- rbind(HHCMtop,HHCM)
 fwrite(HHCM,file=here('data/HHCM.csv'))
 save(HHCM,file=here('data/HHCM.Rdata'))
 
+
+## ===== SIMPLE CONVERSIONS FROM CSV TO RDATA FOR CONSISTENCY
+## BL extract HIV
+BL <- fread(here('indata/blextract1.csv'))
+save(BL,file=here('data/BL.Rdata'))
+## INT cascade data
+INT <- fread(here('indata/resource.int.csv'))
+names(INT)[names(INT)=='CDI'] <- "Cote d'Ivoire"
+save(INT,file=here('data/INT.Rdata'))
+## CE thresholds
+CET <- fread(here('indata/TIPPIresults - CEthresholds.csv'))
+save(CET,file=here('data/CET.Rdata'))
+## modelling parmeters
+PD <- read.csv(here('indata/TIPPIresults - TIPPIparms.csv'))
+save(PD,file=here('data/PD.Rdata'))
+
 ## TODO questions
 ## HIV mix -- different under intervention?

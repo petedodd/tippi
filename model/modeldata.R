@@ -11,6 +11,7 @@ library(discly)
 rexel <- function(x,...) as.data.table(read_excel(x,...))
 ssum <- function(x) sqrt(sum(x^2))
 
+## ====== EFFECT DATA FROM INFERENCE
 ## px & tx data
 edat <- list()
 for(qty in c('px','tx')){
@@ -40,16 +41,20 @@ edatm[,RR:=exp(value)]
 edat <- edatm[,.(id,quant,age,country=variable,RR)]
 save(edat,file=here('data/edat.Rdata'))
 
-load(file=here('data/edat.Rdata'))
+## load(file=here('data/edat.Rdata'))
 
+## ===== COUNTRY KEY
 (cns <- edat[,unique(country)])
 ## cnisos <- c('CMR','CIV','COD','KEN','LSO','MWI','TZA','UGA','ZWE')
-cnisos <- c('CIV','COD','MWI','UGA','ZWE')
+cnisos <- c('CMR','CIV','COD','KEN','LSO','MWI','UGA','ZWE')
 
 countrykey <- data.table(iso3=cnisos,country=cns)
 setkey(countrykey,iso3)
+countrykey
 
-## make discounted life-years tables
+save(countrykey,file=here('data/countrykey.Rdata'))
+
+## ===== DISCOUNTED LIFE-YEARS TABLES
 ## NOTE discount rate set here
 discount.rate <- 0.03
 ## make life-years
@@ -82,6 +87,8 @@ if(TRUE){## if(!file.exists(fn)){
     load(file=fn)
 }
 
+
+## ===== TODO up to here
 ## BL data etc: blextract1.csv  blextract2.csv  resoure.int.csv
 fn <- here('indata/blextract1.csv')
 B1 <- fread(fn)

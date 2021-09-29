@@ -68,7 +68,8 @@ INT[is.na(INT)] <- 0
 ## part0
 ## ================= PSA data for both ============================
 ## make PSA df for outcome data
-PSA <- makePSA(max(edat$id),PZ,dbls = list(c('hivartOR:mn','hivartOR:sg')))
+PSA <- makePSA(max(edat$id),PZ,
+               dbls = list(c('hivartOR:mn','hivartOR:sg')))
 PSA[,id:=1:nrow(PSA)]
 ## make ontx HIV+ outcomes
 PSA[,ontxHAY:=ilogit(logit(ontxY) + `hivartOR:mn` + `hivartOR:sg`)] #on ART
@@ -304,9 +305,6 @@ T <- merge(T,LYK[,.(iso3,age,LYS,LYS0)],by=c('iso3','age'),all.x=TRUE)
 T[,c('dDALY','dDALY0','dDALY.nohiv'):=.(LYS*LS,LYS0*LS,LYS*LS.hiv0)]
 
 
-## ## save out for references
-## save(T,file=here("data/T.Rdata"))
-
 ## calculate differential costs & DALYs over ages
 ## NOTE frac here is age split
 T1 <- T[,.(cost.soc=sum(costt.soc*frac),
@@ -392,9 +390,13 @@ tmp
 fn1 <- glue(here('outdata/CEAC50')) + SAT + '.csv'
 fwrite(tmp,file=fn1)
 
+## TODO issue here
+T1[,table(!is.finite(Dcost),iso3)]
+
 
 ## ICERs by country
-ice <- T1[,.(cost.soc=mean(cost.soc), #costs
+ice <- T1[!iso3 %in% c("CIV","COD"),
+          .(cost.soc=mean(cost.soc), #costs
              cost.soc.lo=lof(cost.soc),
              cost.soc.hi=hif(cost.soc),
              cost.int=mean(cost.int),
@@ -439,7 +441,7 @@ icer <- ice[,.(country=country,
                cost.soc = bracket(cost.soc,cost.soc.lo,cost.soc.hi),
                treated.int=bracket(tx,tx.lo,tx.hi),
                cost.int = bracket(cost.int,cost.int.lo,cost.int.hi),
-               treated.dif=bracket(tx-100,tx.lo-100,tx.hi-100),
+               treated.dif=bracket(tx-1,tx.lo-1,tx.hi-1),
                cost.dif=bracket(Dcost,Dcost.lo,Dcost.hi),
                deaths.dif=bracket(-LS,-LS.hi,-LS.lo),
                LY0.dif=bracket(dDALY0,dDALY0.lo,dDALY0.hi),
@@ -451,11 +453,15 @@ icer
 fn1 <- glue(here('outdata/ICERatt')) + SAT + '.csv'
 fwrite(icer,file=fn1)
 
+## TODO issue here
+T2[,table(!is.finite(Dcost),iso3)]
+
 
 
 ## --- ICER tables  by age (as above)
 ## ICERs by country & age
-iceage <- T2[,.(cost.soc=mean(cost.soc), #costs
+iceage <- T2[!iso3 %in% c("CIV","COD"),
+             .(cost.soc=mean(cost.soc), #costs
              cost.soc.lo=lof(cost.soc),
              cost.soc.hi=hif(cost.soc),
              cost.int=mean(cost.int),
@@ -745,7 +751,8 @@ PT[,deathsPT.int:=(
 ## cost data relevant to PT
 akeep <- c('Presumptive TB evaluation','TPT treatment',
            'TB treatment',"TB contact investigation")
-CD <- CD[Activity %in% akeep,.(iso3,Activity,uc.soc,uc.soc.sd,uc.int)]
+CD <- CD[Activity %in% akeep,.(iso3,Activity,
+                               uc.soc,uc.soc.sd,uc.int)]
 CD[is.na(CD)] <- 0
 CD[Activity==akeep[1],act:='a.tbe']
 CD[Activity==akeep[2],act:='a.tpt']
@@ -755,6 +762,7 @@ CD[Activity==akeep[4],act:='a.hct']
 ## NOTE correction here
 corfac <- merge(corfac,CK,by='country')
 
+## This has changed TODO
 tmp <- CD[act=='a.hct'] #listed as contact investigation
 tmp <- merge(tmp,corfac[,.(iso3,scale)],by='iso3')
 tmp[,uc.int:=scale*uc.int]; tmp[,scale:=NULL]
@@ -767,6 +775,8 @@ CD1[,Activity:=NULL]
 CD1[uc.soc.sd==0,uc.soc.sd:=1.0] #safety
 if(SA=='hhc'){ #sensitivity analysis on SOC hhcost
     CD1[act=='a.thct',uc.soc:=10.0]
+} else { #TODO check
+  CD1[act=='a.thct',uc.soc:=0.0]
 }
 
 ## extend to PSA
@@ -789,7 +799,9 @@ PT <- merge(PT,PTC,by='country',all.x=TRUE) #cascade
 ##         (1-hhc/ptentry)*socu_a.tbe + socu_a.tpt]
 ## PT[,costPT.int:= (hhc/ptentry)*traceperhhcpt*intu_a.hct +
 ##     (1-hhc/ptentry)*intu_a.tbe + intu_a.tpt]
+names(PT)
 
+## BUG
 ## PT costs NOTE corrected version
 PT[,costPT.soc:= (hhc/ptentry)*traceperhhcpt*socu_a.thct +
         (1-hhc/ptentry)*socu_a.hct + socu_a.tpt]
@@ -936,8 +948,6 @@ if(ACF>0){
 }
 
 ## OK to multiply by ptentry - this is split across PT-ages
-## ## save out if needed
-## save(PT,file=here("data/PT.Rdata"))
 
 ## aggregate results
 PT1 <- PT[,.(cost.soc=sum(cost.soc*ptentry),
@@ -1226,6 +1236,7 @@ fwrite(icebrr,file=fn)
 
 ## ================= TODO list ============================
 
+## TODO: coding/modelling
 
 ## TODO run with different seed and check stable
 
@@ -1250,3 +1261,15 @@ fwrite(icebrr,file=fn)
 ## check new bac +, tx outcome and CXR
 
 
+## NOTE
+## presentation/notes:
+## https://docs.google.com/presentation/d/1Oeyd0Nsoz3Ot9gIReESNGRgCGlIVTzWkfDm1essVSvE/edit#slide=id.gd17668ef47_0_0
+
+## draft report:
+https://docs.google.com/document/d/1qoe1DOoWriLkFxkB54kEWGSbicNJDvmSO9fCAFHlYRs/edit#
+
+## parms and results:
+## https://docs.google.com/spreadsheets/d/13XgE91YYijsIJk69v0Tx9bMibNAIUceA6jxDUxbP53w/edit#gid=1731792521
+
+## TIPPI living doc:
+## https://docs.google.com/document/d/1--o1pZoB6pyB59LGmw31-H-XvFUDrzbnmgzg-3fL_o0/edit

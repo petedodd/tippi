@@ -101,9 +101,9 @@ B2 <- fread(fn)
 fn <- here('indata/resource.int.csv')
 RI <- fread(fn)
 str(RI)
-correctype <- function(x) if(is.character(x[1])){ as.numeric(gsub(",","",x))} else {x}
-rnmz <- names(RI)[c(-1)]
-RI[,(rnmz) := lapply(.SD,correctype),.SDcols=rnmz] #remove "," and convert char to num
+## correctype <- function(x) if(is.character(x[1])){ as.numeric(gsub(",","",x))} else {x}
+## rnmz <- names(RI)[c(-1)]
+## RI[,(rnmz) := lapply(.SD,correctype),.SDcols=rnmz] #remove "," and convert char to num
 
 ## melted inverention cascade data
 names(RI)[names(RI)=='CDI'] <- "Cote d'Ivoire"
@@ -111,20 +111,28 @@ RIM <- melt(RI,id='metric')
 names(RIM)[2] <- 'country'
 RIM <- RIM[metric!='Number of sites reporting']
 
+RIM[,unique(metric)]
+
+## NOTE make sure pc are correct for way used
 ## item row names
+## PT breakdown by entry point
 ptv <- c('Number of Index cases with contact tracing done',
          'PT initiation among HIV entry point',
          'PT initiation among contacts',
          'PT initiation all')
+## PT breakdown by age
 ptvn <- c('PThhcu5','PThhcu5pc','PTHIVentryu5',
           'PTHIVentryu5pc','Ptcompletepc')
+## ATT cascade
 attv <- c("Screened for symptoms","Presumptive TB identified",
           "Presumptive TB tested on Xpert","Diagnosed with TB",
           "Treated for DS-TB")
+## bac+ & tx success
 attvn <- c("bacpos","bacposu5","bacposu5pc","TxDenom","TxSuccess",
            "TxSuccesspc")
 otherv <- c("CXRamongclindx")
 
+## TODO needs removing
 ## NOTE correction factor
 ## ratio of screening to index cases
 corfac <- RIM[metric %in% c(ptv[1],attv[1])]
@@ -189,7 +197,7 @@ save(PTFH,file=here('data/PTFH.Rdata'))
 ## PT age splits
 PTTn <- RIM[metric %in% ptvn]
 PTTn <- PTTn[country %in% cns]
-PTTn[is.na(value),value:=0]
+PTTn[is.na(value),value:=0] #CID HIV=0 NOTE 
 
 save(PTTn,file=here('data/PTTn.Rdata'))
 
@@ -223,16 +231,18 @@ ggsave(filename=here('graphs/intervention_cascade.png'),
 ATR <- ATR[,.(metric,country,frac)]
 save(ATR,file=here('data/ATR.Rdata')) #cascade
 
+load(file=here('data/ATR.Rdata')) #cascade
 
-## TODO need new countries
+
 ## output cascade data: costs
-CD <- fread(here('indata/TIPPIresults - costs.csv'))
+CD <- fread(here('indata/unit_costs.csv'))
 CD[,iso3:=gsub('DRC','COD',Country)]
-CD <- CD[iso3!='']
-CD[,uc.soc.sd:=abs(uc.soc.sd)]
+CD[,iso3:=gsub('CDI','CIV',iso3)]
+CD[,V1:=NULL]
 save(CD,file=here('data/CD.Rdata')) #cascade
 
-load(file=here('data/ATR.Rdata')) #cascade
+load(file=here('data/CD.Rdata')) #cascade TODO update from here
+
 
 ## mapping costs to activities
 CD[,metric:=Activity]

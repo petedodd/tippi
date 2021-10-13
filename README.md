@@ -26,11 +26,11 @@ tbc
 - trace ASM & BC inputs
 - finish commenting and tidying modeldata.R
 - particular attention to including extra countries
-- swap out to new unit costs and where they attach (drop old)
-- chnage main modelling to accept args & script wrapper
 - other York thresholds
 - need to split out HIV entry ATT when cost merging?
+- different screening costs?
 - query zero screening costs
 - CMR LSO missing cascade tabs
+- NAs in results for ATT
 - update WHO notifications
 - consolidate other TODO s

@@ -1,4 +1,25 @@
-rm(list=ls())
+## flags for sensitivity analyses
+shell <- FALSE
+if(shell){
+  ## running from shell
+  args <- commandArgs(trailingOnly=TRUE)
+  print(args)
+  SA <- args[1]                  #,hhc,cdr,txd #which SA?
+  ACF <- args[2]                          #icnluding ACF or not
+} else { #set by hand
+  rm(list=ls()) #clear all 
+  ##sensitivity analyses (mostly for PT):
+  ## '' = basecase
+  ## 'hhc' = including 10$ as SoC HHC cost
+  ## 'cdr' = making cdr higher for incidence
+  ## 'txd' = making the completion influence tx/pt outcome
+  sacases <- c('','hhc','cdr','txd')
+  SA <- sacases[1]                  #,hhc,cdr,txd #which SA?
+  ACF <- 1                          #icnluding ACF or not
+}
+SAT <- ifelse(SA=='txd','txd','') #SA relevant to Tx
+
+
 ## libraries
 library(here)
 library(data.table)
@@ -8,7 +29,6 @@ library(ggthemes)
 library(scales)
 library(glue)
 
-## TODO take flags as inputs and script overall use
 
 ## for CEAC plotting
 source(here('../dataprep/tippifunctions.R'))
@@ -38,15 +58,6 @@ PZ <- parse.parmtable(PD)                     #make into parm object
 ## --- settings
 set.seed(1234)
 ceactop <- 3e3 #top to plot in CEAC curves
-##sensitivity analyses (mostly for PT):
-## '' = basecase
-## 'hhc' = including 10$ as SoC HHC cost
-## 'cdr' = making cdr higher for incidence
-## 'txd' = making the completion influence tx/pt outcome
-sacases <- c('','hhc','cdr','txd')
-SA <- sacases[1] #,hhc,cdr,txd
-SAT <- ifelse(SA=='txd','txd','') #SA relevant to Tx
-ACF <- 1
 
 ## country key
 CK <- data.table(iso3=unique(LYK$iso3)) #NOTE this is where the countries involved are coded
@@ -124,6 +135,7 @@ HHCM <- HHCM[,.(value=sum(value)),by=.(age,activity)]
 HHCM[,value:=value/HHCM[activity=="index cases with HHCM",value]]
 
 ## TODO other York thresholds
+## TODO move to data file?
 ## format threshold data
 CET[,`1x GDP`:=as.numeric(gsub(",","",`1x GDP`))]
 CET[,`3x GDP`:=as.numeric(gsub(",","",`3x GDP`))]
@@ -141,19 +153,19 @@ CETM
 ## part1
 ## ================= ATT component ============================
 
-## change names DBCE so presumptive identified is screened
+## change names DBC so presumptive identified is screened
 extra <- as.data.table(expand.grid(metric='Screened for symptoms',
                                    country=unique(ATR$country)))
-extra <- merge(extra,DBCE[metric=='Presumptive TB identified', #TODO check correct screen number
+extra <- merge(extra,DBC[metric=='Presumptive TB identified', #TODO check correct screen number
                           .(country,ratio)],
                by='country')
 
 ## int/soc ratios for cascades at different stages
-E1 <- copy(DBCE)
+E1 <- copy(DBC[,.(country,metric,ratio)])
 E1 <- rbind(E1,extra)
 E1 <- merge(E1,CK,by='country')
 
-## merge against cascade/cost data jj
+## merge against cascade/cost data
 K <- merge(ART2,E1,by=c('iso3','metric'),all.x = TRUE)
 K[is.na(ratio),ratio:=1]
 K[,country:=NULL]
@@ -223,11 +235,11 @@ T <- merge(T,K2,by='country',all.x=TRUE)
 
 ## gamma samples for cost uncertainty
 T[,costv.soc:=rgamma(nrow(T),
-                  shape=(cost.soc/cost.soc.sd)^2,
-                  scale = cost.soc.sd^2/cost.soc)]
+                  shape=(cost.soc/(cost.soc.sd+1e-6))^2,
+                  scale = cost.soc.sd^2/(cost.soc+1e-6))]
 T[,costv.int:=rgamma(nrow(T),
-                  shape=(cost.int/cost.int.sd)^2,
-                  scale = cost.int.sd^2/cost.int)]
+                  shape=(cost.int/(cost.int.sd+1e-6))^2,
+                  scale = cost.int.sd^2/(cost.int+1e-6))]
 ## multiply unit costs by volume (ie # treated)
 T[,c('costt.soc','costt.int'):=.(costv.soc,costv.int*RR)]
 
@@ -396,39 +408,40 @@ T1[,table(!is.finite(Dcost),iso3)]
 
 
 ## ICERs by country
-ice <- T1[!iso3 %in% c("CIV","COD"),
-          .(cost.soc=mean(cost.soc), #costs
-             cost.soc.lo=lof(cost.soc),
-             cost.soc.hi=hif(cost.soc),
-             cost.int=mean(cost.int),
-             cost.int.lo=lof(cost.int),
-             cost.int.hi=hif(cost.int),
-             Dcost=mean(Dcost),
-             Dcost.lo=lof(Dcost),
-             Dcost.hi=hif(Dcost),
-             ## deaths
-             deaths.soc=mean(deaths.soc),
-             deaths.soc.lo=lof(deaths.soc),
-             deaths.soc.hi=hif(deaths.soc),
-             deaths.int=mean(deaths.int),
-             deaths.int.lo=lof(deaths.int),
-             deaths.int.hi=hif(deaths.int),
-             Ddeaths=mean(deaths.int-deaths.soc),
-             Ddeaths.lo=lof(deaths.int-deaths.soc),
-             Ddeaths.hi=hif(deaths.int-deaths.soc),
-             LS=mean(LS),LS.lo=lof(LS),LS.hi=hif(LS),
-             ## dalys
-             dDALY0=mean(dDALY0),
-             dDALY=mean(dDALY),
-             dDALY.nohiv=mean(dDALY.nohiv),
-             dDALY.hi=hif(dDALY),
-             dDALY.lo=lof(dDALY),
-             dDALY0.hi=hif(dDALY0),
-             dDALY0.lo=lof(dDALY0),
-             ## ICER
-             ICER=mean(Dcost)/mean(dDALY)
-             ),
-          by=country]
+ice <- T1[## !iso3 %in% c("CIV","COD"),
+  !is.na(Dcost),
+  .(cost.soc=mean(cost.soc), #costs
+    cost.soc.lo=lof(cost.soc),
+    cost.soc.hi=hif(cost.soc),
+    cost.int=mean(cost.int),
+    cost.int.lo=lof(cost.int),
+    cost.int.hi=hif(cost.int),
+    Dcost=mean(Dcost),
+    Dcost.lo=lof(Dcost),
+    Dcost.hi=hif(Dcost),
+    ## deaths
+    deaths.soc=mean(deaths.soc),
+    deaths.soc.lo=lof(deaths.soc),
+    deaths.soc.hi=hif(deaths.soc),
+    deaths.int=mean(deaths.int),
+    deaths.int.lo=lof(deaths.int),
+    deaths.int.hi=hif(deaths.int),
+    Ddeaths=mean(deaths.int-deaths.soc),
+    Ddeaths.lo=lof(deaths.int-deaths.soc),
+    Ddeaths.hi=hif(deaths.int-deaths.soc),
+    LS=mean(LS),LS.lo=lof(LS),LS.hi=hif(LS),
+    ## dalys
+    dDALY0=mean(dDALY0),
+    dDALY=mean(dDALY),
+    dDALY.nohiv=mean(dDALY.nohiv),
+    dDALY.hi=hif(dDALY),
+    dDALY.lo=lof(dDALY),
+    dDALY0.hi=hif(dDALY0),
+    dDALY0.lo=lof(dDALY0),
+    ## ICER
+    ICER=mean(Dcost)/mean(dDALY)
+    ),
+  by=country]
 txd <- T[,.(tx=mean(RR),tx.lo=lof(RR),tx.hi=hif(RR)),by=country] #treatment relative to BL
 ice <- merge(ice,txd,by='country')
 
@@ -461,7 +474,7 @@ T2[,table(!is.finite(Dcost),iso3)]
 
 ## --- ICER tables  by age (as above)
 ## ICERs by country & age
-iceage <- T2[!iso3 %in% c("CIV","COD"),
+iceage <- T2[!is.na(Dcost),             #!iso3 %in% c("CIV","COD")
              .(cost.soc=mean(cost.soc), #costs
              cost.soc.lo=lof(cost.soc),
              cost.soc.hi=hif(cost.soc),

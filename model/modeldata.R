@@ -442,6 +442,7 @@ fwrite(cascadetab,file=here('outdata/cascadetab.csv'))
 ## === making CDRs and getting some relevant HIV data ===
 whodir <- glue('~/Dropbox/Documents/WHO_TBreports/data2020/')
 
+## TODO update?
 ## === load WHO notifications
 ## http://www.who.int/tb/country/data/download/en/
 fn <- whodir + 'TB_notifications_2020-10-15.csv'
@@ -549,6 +550,7 @@ save(CDR,file=here('data/CDR.Rdata'))
 ## 13533
 ## 31515
 
+## HHCM cascade across countries
 HHCMtop <- data.table(
     value=c(47139,
             25944,

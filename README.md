@@ -31,9 +31,9 @@ tbc
 - other York thresholds
 - need to split out HIV entry ATT when cost merging?
 - query zero screening costs
-- TODO 67 in modeldata
 - CMR LSO missing cascade tabs
 - script to inject results into googlesheets
 - RR needed in cascade tabs?
 - delete DBCE
+- update WHO notifications
 - consolidate other TODO s

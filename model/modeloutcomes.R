@@ -117,13 +117,13 @@ CFRdatam[,dA:=pmax(dA,dN)]
 ## NOTE see also PSA manipulation specific to PT in second part
 
 
-## HHCM cascade
+## HHCM cascade in aggregate
 ## NOTE aggregated over mode TODO - think about country-specific mode
 HHCM <- HHCM[,.(value=sum(value)),by=.(age,activity)]
-
 ## make relative to index cases with HHCM
 HHCM[,value:=value/HHCM[activity=="index cases with HHCM",value]]
 
+## TODO other York thresholds
 ## format threshold data
 CET[,`1x GDP`:=as.numeric(gsub(",","",`1x GDP`))]
 CET[,`3x GDP`:=as.numeric(gsub(",","",`3x GDP`))]
@@ -144,7 +144,7 @@ CETM
 ## change names DBCE so presumptive identified is screened
 extra <- as.data.table(expand.grid(metric='Screened for symptoms',
                                    country=unique(ATR$country)))
-extra <- merge(extra,DBCE[metric=='Presumptive TB identified',
+extra <- merge(extra,DBCE[metric=='Presumptive TB identified', #TODO check correct screen number
                           .(country,ratio)],
                by='country')
 
@@ -153,8 +153,7 @@ E1 <- copy(DBCE)
 E1 <- rbind(E1,extra)
 E1 <- merge(E1,CK,by='country')
 
-## merge against cascade/cost data
-
+## merge against cascade/cost data jj
 K <- merge(ART2,E1,by=c('iso3','metric'),all.x = TRUE)
 K[is.na(ratio),ratio:=1]
 K[,country:=NULL]

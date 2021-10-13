@@ -269,14 +269,22 @@ CD[Activity=="Xpert testing",.(Country,uc.soc,uc.soc.sd,uc.int)] #check
 ## map unit costs to activities
 CD[Activity=='Presumptive TB evaluation',
    metric:="Presumptive TB identified"] #NM
-CD[Activity=='TB contact investigation',
+
+## [1] "Community hhci"              "Facility hhci"              
+## [3] "Screening in HIV clinic"     "Screening in non-HIV clinic"
+
+## TODO need to split out HIV component?
+CD[Activity=="Screening in non-HIV clinic",
    metric:="Screened for symptoms"] #NM
-CD[Activity=='Sample collection',
-   metric:="Sample collection"] #NM
+
+## CD[Activity=='Sample collection',
+##    metric:="Sample collection"] #NM
 CD[Activity=='Xpert testing',
    metric:="Presumptive TB tested on Xpert"]
 CD[Activity=='TB treatment',
    metric:="TB treatment"]
+
+CD[grepl('reen',Activity)] #NOTE TODO some of the ucs are 0
 
 CD2 <- CD[!is.na(metric)]
 ATR <- merge(ATR,countrykey,by='country')
@@ -287,20 +295,18 @@ ART2 <- rbind(ATR[,.(iso3,metric,frac)],
 CD2 <- rbindlist(list(
     CD2[,.(iso3,metric,uc.soc,uc.soc.sd,uc.int)],
     data.table(iso3=cnisos,metric='Diagnosed with TB',
-               uc.soc=0.0,uc.soc.sd=0.0,uc.int=0.0)))## ,
-    ## data.table(iso3=cnisos,metric='Presumptive TB identified',
-    ##            uc.soc=0.0,uc.soc.sd=0.0,uc.int=0.0)))
-
+               uc.soc=0.0,uc.soc.sd=0.0,uc.int=0.0)))
 
 ART2 <- merge(ART2,CD2,
               by=c('iso3','metric'))
-ART2[is.na(uc.int),uc.int:=0.0]
+## ART2[is.na(uc.int),uc.int:=0.0]
 ART2[is.na(uc.soc.sd),uc.soc.sd:=0]
 ART2[iso3=='MWI']
 save(ART2,file=here('data/ART2.Rdata')) #cascade + costs
 
 load(file=here('data/ART2.Rdata')) #cascade + costs
 
+## TODO 67 what is this? still needed?
 ## see after ratio computations
 ## xtra <- ART2[,.(cost=sum(uc.soc*frac),cost.sd=ssum(frac*uc.soc.sd)),
 ##              by=iso3]
@@ -382,66 +388,35 @@ ggsave(filename=here('graphs/cascade_compare2.png'),w=8,h=5)
 
 DBR
 
-## see SOS cost parms
-## TB assesment costs ~ 10 USD
-## TB ATT cost ~ 140 USD
-## Xpert ~ 20 USD
-## PT cost parms
-
-## PT cascade -- currently assume zero baseline
-
-
 ## comparison of increases in resources vs effect
 edatm <- edat[,.(RR=mean(RR)),by=.(quant,age,country)]
 
 DBC <- dcast(DBR,country+metric ~ period,value.var = 'frac')
 DBC[,ratio:=Intervention/Baseline]
-DBC <- DBC[!is.na(ratio)]
+DBC[is.na(ratio),ratio:=mean(ratio,na.rm=TRUE),by=metric]
 
-edatm <- edatm[quant=='tx',.(RR=mean(RR)),country]
-DBC <- merge(DBC,edatm,by='country',all.x = TRUE,all.y=FALSE)
+## compute average for each metric
+tmp <- DBC[,.(rat=mean(ratio,na.rm=TRUE)),by=metric]
+DBC <- merge(DBC,tmp,by='metric')
+DBC[is.na(Baseline),ratio:=rat] #replace missing with average
+DBC[,rat:=NULL]                 #remove additional data
 
-ggplot(DBC,aes(RR,ratio,col=country)) +
-    geom_point() +
-    facet_wrap(~metric)
 
+## this gives the int/soc ratio of presumptive and testing per treatment
+save(DBC,file=here('data/DBC.Rdata')) #ratios int v bl
+load(file=here('data/DBC.Rdata')) #ratios int v bl
 
-DBC <- DBC[,.(country,metric,ratio)]
-
-exns <- ATR[,unique(country)]
-## exclude countries that have a ratio
-exns <- exns[!exns %in% c('Kenya',
-                          'Lesotho',
-                          'Malawi',
-                          'Uganda',
-                          'Zimbabwe')]
-exns <- as.character(exns)
-mrcs <- ATR[,unique(metric)]
-mrcs <- mrcs[grepl('Presumptive',mrcs)]
-
-DBCE <- data.table(expand.grid(country=c(exns),metric=mrcs))
-DBCE[,ratio:=NA_real_]
-DBCE <- rbind(DBC,DBCE)
-DBCE[metric=='Presumptive TB identified',tbi:=mean(ratio,na.rm=TRUE)]
-DBCE[,tbi:=mean(ratio,na.rm=TRUE),by=metric]
-DBCE[is.na(ratio),ratio:=tbi] #means for NAs
-DBCE[,tbi:=NULL]
-
-save(DBCE,file=here('data/DBCE.Rdata')) #ratios int v bl
-load(file=here('data/DBCE.Rdata')) #ratios int v bl
-
+## TODO check whether RR needed in these
+## edatm <- edatm[quant=='tx',.(RR=mean(RR)),country]
+## DBC <- merge(DBC,edatm,by='country',all.x = TRUE,all.y=FALSE)
 
 ## === cost tables
-DBCE <- merge(DBCE,countrykey,by='country')
-ART2 <- merge(ART2,DBCE,by=c('iso3','metric'),all.x=TRUE)
-ART2[,country:=NULL]
-tmp <- DBCE[metric=='Presumptive TB identified']
-ART2 <- merge(ART2,tmp[,.(iso3,tt=ratio)],all.x=TRUE,by='iso3')
-ART2[metric=='Screened for symptoms',ratio:=tt]
+DBC <- merge(DBC,countrykey,by='country')
+ART2 <- merge(ART2,DBC,by=c('iso3','metric'),all.x=TRUE)
+ART2[,c('country','Baseline','Intervention'):=NULL]
 ART2[is.na(ratio),ratio:=1.0]
-ART2[,tt:=NULL]
 
-
+## TODO CMR/LSO issue
 ## merge and compute both sets of costs
 xtra <- ART2[,.(cost.soc=sum(uc.soc*frac/ratio),
                 cost.soc.sd=ssum(frac*uc.soc.sd/ratio),

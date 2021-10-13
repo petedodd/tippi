@@ -104,13 +104,13 @@ nmz <- names(INT)[-1]
 txsuccess <- data.table(
     country=nmz,
     BL=unlist(INT[metric=='TxSuccesspcBL',..nmz]),
-    INT=unlist(INT[metric=='TxSuccesspc',..nmz])/100
+    INT=unlist(INT[metric=='TxSuccesspc',..nmz])
 )
 fwrite(txsuccess,file=here('outdata/txsuccess.csv'))
 ptsuccess <- data.table(
     country=nmz,
     BL=unlist(INT[metric=='PtcompletepcBL',..nmz]),
-    INT=unlist(INT[metric=='Ptcompletepc',..nmz])/100
+    INT=unlist(INT[metric=='Ptcompletepc',..nmz])
 )
 fwrite(ptsuccess,file=here('outdata/ptsuccess.csv'))
 

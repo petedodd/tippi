@@ -17,7 +17,7 @@ source(here('../dataprep/tippifunctions.R'))
 ## these are made by modeldata.R
 load(file=here('data/edat.Rdata')) #effect data
 load(file=here('data/LYK.Rdata'))  #LYs discounted
-load(file=here('data/DBCE.Rdata')) #ratios int v bl
+load(file=here('data/DBC.Rdata')) #ratios int v bl
 load(file=here('data/ATR.Rdata')) #ATT cascade
 load(file=here('data/ART2.Rdata')) #ATT cascade & costs
 load(file=here('data/CDR.Rdata')) #CDR

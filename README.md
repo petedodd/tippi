@@ -32,8 +32,5 @@ tbc
 - need to split out HIV entry ATT when cost merging?
 - query zero screening costs
 - CMR LSO missing cascade tabs
-- script to inject results into googlesheets
-- RR needed in cascade tabs?
-- delete DBCE
 - update WHO notifications
 - consolidate other TODO s

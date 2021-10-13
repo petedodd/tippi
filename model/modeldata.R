@@ -85,6 +85,7 @@ if(TRUE){## if(!file.exists(fn)){
     setkey(LYK,age)
     save(LYK,file=fn)
 } else {
+  
     load(file=fn)
 }
 
@@ -132,7 +133,7 @@ attvn <- c("bacpos","bacposu5","bacposu5pc","TxDenom","TxSuccess",
            "TxSuccesspc")
 otherv <- c("CXRamongclindx")
 
-## TODO needs removing
+## TODO needs removing?
 ## NOTE correction factor
 ## ratio of screening to index cases
 corfac <- RIM[metric %in% c(ptv[1],attv[1])]
@@ -302,6 +303,7 @@ ART2 <- merge(ART2,CD2,
 ## ART2[is.na(uc.int),uc.int:=0.0]
 ART2[is.na(uc.soc.sd),uc.soc.sd:=0]
 ART2[iso3=='MWI']
+
 save(ART2,file=here('data/ART2.Rdata')) #cascade + costs
 
 load(file=here('data/ART2.Rdata')) #cascade + costs
@@ -371,9 +373,7 @@ edatm <- edat[,.(RR=mean(RR)),by=.(quant,age,country)]
 
 DBC <- dcast(DBR,country+metric ~ period,value.var = 'frac')
 DBC[,ratio:=Intervention/Baseline]
-DBC[is.na(ratio),ratio:=mean(ratio,na.rm=TRUE),by=metric]
-
-## compute average for each metric
+## compute average for each metric to fill in gaps
 tmp <- DBC[,.(rat=mean(ratio,na.rm=TRUE)),by=metric]
 DBC <- merge(DBC,tmp,by='metric')
 DBC[is.na(Baseline),ratio:=rat] #replace missing with average
@@ -383,10 +383,6 @@ DBC[,rat:=NULL]                 #remove additional data
 ## this gives the int/soc ratio of presumptive and testing per treatment
 save(DBC,file=here('data/DBC.Rdata')) #ratios int v bl
 load(file=here('data/DBC.Rdata')) #ratios int v bl
-
-## TODO check whether RR needed in these
-## edatm <- edatm[quant=='tx',.(RR=mean(RR)),country]
-## DBC <- merge(DBC,edatm,by='country',all.x = TRUE,all.y=FALSE)
 
 ## === cost tables
 DBC <- merge(DBC,countrykey,by='country')

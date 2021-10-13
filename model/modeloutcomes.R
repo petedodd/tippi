@@ -634,7 +634,8 @@ hag[,heu5+heo5+hcu5+hco5]               #check
 hag <- melt(hag[,.(country,heu5,heo5,hcu5,hco5)],id='country')
 hag[,age:='0-4']; hag[grepl('o5',variable),age:='5-14'] #age var
 hag[,route:='hhc']; hag[grepl('he',variable),route:='hentry']
-hag <- dcast(hag[,.(country,value,route,age)],country+age~route,value.var='value')
+hag <- dcast(hag[,.(country,value,route,age)],
+             country+age~route,value.var='value')
 
 ## outputting cascade data
 hago <- dcast(hag,country~age,value.var = c('hentry','hhc'))
@@ -649,7 +650,7 @@ fwrite(hago,file=here('outdata/PTC.csv')) #save as output too
 ## merge into PT data
 PT <- merge(PT,hag,by=c('country','age'),all.x = TRUE)
 ## NOTE this is normalized over route x age - age-stratified results will need renorm'n:
-PT[,ptentry:=hentry+hhc]                #denominator for age-stratified calx
+PT[,ptentry:=hentry+hhc]  #denominator for age-stratified calx
 
 
 ## ARI assumption for HIV? or similar
@@ -762,28 +763,30 @@ PT[,deathsPT.int:=(
 ##  --- costs
 ## NOTE next one, maybe 2 paras could go into modeldata.R
 ## cost data relevant to PT
+CD[,unique(Activity)]
+
 akeep <- c('Presumptive TB evaluation','TPT treatment',
            'TB treatment',"TB contact investigation")
-CD <- CD[Activity %in% akeep,.(iso3,Activity,
+CDS <- CD[Activity %in% akeep,.(iso3,Activity,
                                uc.soc,uc.soc.sd,uc.int)]
-CD[is.na(CD)] <- 0
-CD[Activity==akeep[1],act:='a.tbe']
-CD[Activity==akeep[2],act:='a.tpt']
-CD[Activity==akeep[3],act:='a.att']
-CD[Activity==akeep[4],act:='a.hct']
+CDS[is.na(CDS)] <- 0
+CDS[Activity==akeep[1],act:='a.tbe']
+CDS[Activity==akeep[2],act:='a.tpt']
+CDS[Activity==akeep[3],act:='a.att']
+CDS[Activity==akeep[4],act:='a.hct']
 
 ## NOTE correction here
 corfac <- merge(corfac,CK,by='country')
 
 ## This has changed TODO
-tmp <- CD[act=='a.hct'] #listed as contact investigation
+tmp <- CDS[act=='a.hct'] #listed as contact investigation
 tmp <- merge(tmp,corfac[,.(iso3,scale)],by='iso3')
 tmp[,uc.int:=scale*uc.int]; tmp[,scale:=NULL]
 tmp[,act:='a.thct']; tmp[,Activity:='True HHCT']
-CD <- rbind(CD,tmp)
+CDS <- rbind(CDS,tmp)
 
 
-CD1 <- copy(CD) #so doesn't break on re-running
+CD1 <- copy(CDS) #so doesn't break on re-running
 CD1[,Activity:=NULL]
 CD1[uc.soc.sd==0,uc.soc.sd:=1.0] #safety
 if(SA=='hhc'){ #sensitivity analysis on SOC hhcost
@@ -803,23 +806,55 @@ CDp <- CDp[,.(iso3,id,act,socu,intu)]
 CDp <- dcast(CDp,iso3+id~act,value.var=c('socu','intu'))
 
 ## merge in
-PT <- merge(PT,CDp,by=c('iso3','id'))    #costs
+## PT <- merge(PT,CDp,by=c('iso3','id'))    #costs
 PT <- merge(PT,PTC,by='country',all.x=TRUE) #cascade
 
-## calculate costs NOTE normalized for each row, not over ages
-## ## PT costs
-## PT[,costPT.soc:= (hhc/ptentry)*traceperhhcpt*socu_a.hct +
-##         (1-hhc/ptentry)*socu_a.tbe + socu_a.tpt]
-## PT[,costPT.int:= (hhc/ptentry)*traceperhhcpt*intu_a.hct +
-##     (1-hhc/ptentry)*intu_a.tbe + intu_a.tpt]
+## ## calculate costs NOTE normalized for each row, not over ages
+## ## ## PT costs
+## ## PT[,costPT.soc:= (hhc/ptentry)*traceperhhcpt*socu_a.hct +
+## ##         (1-hhc/ptentry)*socu_a.tbe + socu_a.tpt]
+## ## PT[,costPT.int:= (hhc/ptentry)*traceperhhcpt*intu_a.hct +
+## ##     (1-hhc/ptentry)*intu_a.tbe + intu_a.tpt]
+## names(PT)
+
+## ## BUG
+## ## PT costs NOTE corrected version
+## PT[,costPT.soc:= (hhc/ptentry)*traceperhhcpt*socu_a.thct +
+##         (1-hhc/ptentry)*socu_a.hct + socu_a.tpt]
+## PT[,costPT.int:= (hhc/ptentry)*traceperhhcpt*intu_a.thct +
+##         (1-hhc/ptentry)*intu_a.hct + intu_a.tpt]
+
+## togo <- names(CDp)
+## togo <- togo[!togo %in% c('iso3','id')]
+## PT[,(togo):=NULL]
+## CD
+
+## convert tp PSA
+nr <- nrow(CD)
+CDp <- CD[rep(1:nr,each=max(PT$id))]
+CDp[,id:=rep(1:max(PT$id),nr)]
+CDp[is.na(CDp)] <- 0
+CDp[,socu:=rgamma(nrow(CDp),shape=(uc.soc/(uc.soc.sd+1e-6))^2,
+                  scale=uc.soc.sd^2/(uc.soc+1e-6))]
+CDp[,intu:=socu + uc.int] #NOTE intu aren't incremental now
+CDp <- CDp[,.(iso3,Activity,id,act,socu,intu)]
+CDp <- dcast(CDp,iso3+id~Activity,value.var=c('socu','intu'))
+
+PT <- merge(PT,CDp,by=c('iso3','id'))    #costs
 names(PT)
 
-## BUG
-## PT costs NOTE corrected version
-PT[,costPT.soc:= (hhc/ptentry)*traceperhhcpt*socu_a.thct +
-        (1-hhc/ptentry)*socu_a.hct + socu_a.tpt]
-PT[,costPT.int:= (hhc/ptentry)*traceperhhcpt*intu_a.thct +
-        (1-hhc/ptentry)*intu_a.hct + intu_a.tpt]
+## TODO check costing
+PT[,costPT.soc:=
+      (hhc/ptentry)*traceperhhcpt*`socu_Facility hhci`+ #facility CT
+      (1-hhc/ptentry)*`socu_Screening in HIV clinic`+   #HIV
+      `socu_TPT treatment`                              #TPT
+   ]
+
+PT[,costPT.int:=
+      (hhc/ptentry)*traceperhhcpt*`intu_Facility hhci`+ #facility CT
+      (1-hhc/ptentry)*`intu_Screening in HIV clinic`+   #HIV
+      `intu_TPT treatment`                              #TPT
+   ]
 
 
 ## --- ACF here
@@ -863,6 +898,7 @@ PT[,c('deathsPrev.soc','deathsPrev.int'):=.(sum(deathsPrev.soc),
                                             sum(deathsPrev.int)),
    by=.(id,country)] #sum over ages - per PT
 
+## jj convert costs
 ## cost (not including thct)
 PT[,costACF.soc.hh:= ## coprev HHCM'd
     totindexscreen*(Screened*socu_a.hct +
@@ -880,6 +916,24 @@ PT[,c('costACF.soc.hh','costACF.soc.nhh','costACF.int'):=
           sum(costACF.soc.nhh),
           sum(costACF.int.hh)),
    by=.(id,country)] #sum over ages - per PT
+
+## ## cost (not including thct)
+## PT[,costACF.soc.hh:= ## coprev HHCM'd
+##       totindexscreen*(Screened*socu_a.hct +
+##                       Presumptive*socu_a.tbe +
+##                       Diagnosed*socu_a.att)]
+## PT[,costACF.soc.nhh:=
+##       ## coprev not HHCM'd - not including PHC screening cost
+##       (totindexscreen*Diagnosed*cdr*(socu_a.att+socu_a.tbe))]
+## PT[,costACF.int.hh:= ## coprev HHCM'd
+##       totindexscreen*(Screened*intu_a.hct +
+##                       Presumptive*intu_a.tbe +
+##                       Diagnosed*intu_a.att)]
+## PT[,c('costACF.soc.hh','costACF.soc.nhh','costACF.int'):=
+##       .(sum(costACF.soc.hh),
+##         sum(costACF.soc.nhh),
+##         sum(costACF.int.hh)),
+##    by=.(id,country)] #sum over ages - per PT
 
 
 ## ATT

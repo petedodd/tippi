@@ -32,5 +32,6 @@ tbc
 - query zero screening costs
 - CMR LSO missing cascade tabs
 - NAs in results for ATT - down to missing countries in ASM <- trace
+- understanding (HH vs facility CT) (also HIV vs not split)
 - update WHO notifications
 - consolidate other TODO s

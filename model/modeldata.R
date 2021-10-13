@@ -306,28 +306,6 @@ save(ART2,file=here('data/ART2.Rdata')) #cascade + costs
 
 load(file=here('data/ART2.Rdata')) #cascade + costs
 
-## TODO 67 what is this? still needed?
-## see after ratio computations
-## xtra <- ART2[,.(cost=sum(uc.soc*frac),cost.sd=ssum(frac*uc.soc.sd)),
-##              by=iso3]
-
-## xtra[,frac:=paste0(round(cost),' (',round(cost.sd),')')]
-## xtra[,metric:='cost']
-
-## cascadetab <- rbind(ART2[,.(iso3,metric,frac=paste0(round(frac,2)))],
-##                     xtra[,.(iso3,metric,frac)])
-
-
-## cascadetab <- dcast(cascadetab,iso3~metric,value.var = 'frac')
-## ccs <- c("iso3","Screened for symptoms","Presumptive TB identified",
-##          "Presumptive TB tested on Xpert","Diagnosed with TB",
-##          "TB treatment","cost")
-## setcolorder(cascadetab,ccs)
-
-## fwrite(cascadetab,file=here('outdata/cascadetab.csv'))
-
-## CD <- dcast(CD,iso3~Activity,value.var = c('uc.soc','uc.soc.sd'))
-
 ## ==================== baseline data ===========
 B1
 B2

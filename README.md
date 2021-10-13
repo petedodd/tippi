@@ -31,6 +31,6 @@ tbc
 - different screening costs?
 - query zero screening costs
 - CMR LSO missing cascade tabs
-- NAs in results for ATT
+- NAs in results for ATT - down to missing countries in ASM <- trace
 - update WHO notifications
 - consolidate other TODO s

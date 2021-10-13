@@ -233,7 +233,7 @@ K2 <- merge(K2,CK,by='iso3')
 T <- edat[quant!='px']
 T <- merge(T,K2,by='country',all.x=TRUE)
 
-## gamma samples for cost uncertainty
+## gamma samples for cost uncertainty (with safeties for 0)
 T[,costv.soc:=rgamma(nrow(T),
                   shape=(cost.soc/(cost.soc.sd+1e-6))^2,
                   scale = cost.soc.sd^2/(cost.soc+1e-6))]
@@ -317,6 +317,14 @@ names(T)[names(T)=='Intervention'] <- 'fracI'
 T <- merge(T,LYK[,.(iso3,age,LYS,LYS0)],by=c('iso3','age'),all.x=TRUE)
 T[,c('dDALY','dDALY0','dDALY.nohiv'):=.(LYS*LS,LYS0*LS,LYS*LS.hiv0)]
 
+## BUG
+summary(T)
+T[,table(is.na(frac),iso3)] #NOTE frac is NA for CMR, KEN, LSO
+## for now fill in
+fz <- T[sample(which(!is.na(frac)),size=sum(is.na(frac)),replace = TRUE),frac]
+fzi <- T[sample(which(!is.na(fracI)),size=sum(is.na(fracI)),replace = TRUE),fracI]
+T[is.na(frac),frac:=fz]
+T[is.na(fracI),fracI:=fzi]
 
 ## calculate differential costs & DALYs over ages
 ## NOTE frac here is age split
@@ -383,7 +391,7 @@ for(iso in unique(T1$iso3)){
 }
 ceacd <- rbindlist(ceacd)
 
-## make CEAC plot
+## make CEAC plot TODO check if need to exclude mean -ves?
 CEAC <- make.ceac.plot(ceacd,xpad=50)
 CEAC
 
@@ -403,13 +411,8 @@ tmp
 fn1 <- glue(here('outdata/CEAC50')) + SAT + '.csv'
 fwrite(tmp,file=fn1)
 
-## TODO issue here
-T1[,table(!is.finite(Dcost),iso3)]
-
-
 ## ICERs by country
-ice <- T1[## !iso3 %in% c("CIV","COD"),
-  !is.na(Dcost),
+ice <- T1[,
   .(cost.soc=mean(cost.soc), #costs
     cost.soc.lo=lof(cost.soc),
     cost.soc.hi=hif(cost.soc),
@@ -467,14 +470,10 @@ icer
 fn1 <- glue(here('outdata/ICERatt')) + SAT + '.csv'
 fwrite(icer,file=fn1)
 
-## TODO issue here
-T2[,table(!is.finite(Dcost),iso3)]
-
-
 
 ## --- ICER tables  by age (as above)
 ## ICERs by country & age
-iceage <- T2[!is.na(Dcost),             #!iso3 %in% c("CIV","COD")
+iceage <- T2[,
              .(cost.soc=mean(cost.soc), #costs
              cost.soc.lo=lof(cost.soc),
              cost.soc.hi=hif(cost.soc),
@@ -628,8 +627,8 @@ tmp <- dcast(tmp[,.(metric,country=variable,value)],
              country~metric,value='pc')
 tmp <- tmp[country %in% CK$country]
 hag <- merge(tmp,PTFH[,.(country,ptinhiv)],by='country') #both splits
-hag[,heu5:=ptinhiv*PTHIVentryu5pc/100];hag[,heo5:=ptinhiv*(1-PTHIVentryu5pc/100)]
-hag[,hcu5:=(1-ptinhiv)*PThhcu5pc/100];hag[,hco5:=(1-ptinhiv)*(1-PThhcu5pc/100)]
+hag[,heu5:=ptinhiv*PTHIVentryu5pc];hag[,heo5:=ptinhiv*(1-PTHIVentryu5pc)]
+hag[,hcu5:=(1-ptinhiv)*PThhcu5pc];hag[,hco5:=(1-ptinhiv)*(1-PThhcu5pc)]
 hag[,heu5+heo5+hcu5+hco5]               #check
 ## combined age/entry-point splits in right format
 hag <- melt(hag[,.(country,heu5,heo5,hcu5,hco5)],id='country')

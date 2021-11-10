@@ -4,8 +4,10 @@ if(shell){
   ## running from shell
   args <- commandArgs(trailingOnly=TRUE)
   print(args)
-  SA <- args[1]                  #,hhc,cdr,txd #which SA?
+  SA <- args[1]                  #none,hhc,cdr,txd #which SA?
+  if(SA == 'none') SA <- ''
   ACF <- args[2]                          #icnluding ACF or not
+  ACF <- as.numeric(ACF)
 } else { #set by hand
   rm(list=ls()) #clear all 
   ##sensitivity analyses (mostly for PT):

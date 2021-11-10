@@ -280,7 +280,7 @@ T[,CFRtx.soc:=CFRtx]
 if(SA=='txd'){                        #sensitivity analysis
     T[,CFRtx.soc:=CFRtx * (1-BL)/(1-INT)] #scale up tx CFR by non-success
 }
-
+ 
 
 ## incremental lives saved - change in implied by RR
 ## T[,LS:=(RR-1)*dCFR]
@@ -810,24 +810,6 @@ CDp <- dcast(CDp,iso3+id~act,value.var=c('socu','intu'))
 PT <- merge(PT,PTC,by='country',all.x=TRUE) #cascade
 
 ## ## calculate costs NOTE normalized for each row, not over ages
-## ## ## PT costs
-## ## PT[,costPT.soc:= (hhc/ptentry)*traceperhhcpt*socu_a.hct +
-## ##         (1-hhc/ptentry)*socu_a.tbe + socu_a.tpt]
-## ## PT[,costPT.int:= (hhc/ptentry)*traceperhhcpt*intu_a.hct +
-## ##     (1-hhc/ptentry)*intu_a.tbe + intu_a.tpt]
-## names(PT)
-
-## ## BUG
-## ## PT costs NOTE corrected version
-## PT[,costPT.soc:= (hhc/ptentry)*traceperhhcpt*socu_a.thct +
-##         (1-hhc/ptentry)*socu_a.hct + socu_a.tpt]
-## PT[,costPT.int:= (hhc/ptentry)*traceperhhcpt*intu_a.thct +
-##         (1-hhc/ptentry)*intu_a.hct + intu_a.tpt]
-
-## togo <- names(CDp)
-## togo <- togo[!togo %in% c('iso3','id')]
-## PT[,(togo):=NULL]
-## CD
 
 ## convert tp PSA
 nr <- nrow(CD)
@@ -898,42 +880,29 @@ PT[,c('deathsPrev.soc','deathsPrev.int'):=.(sum(deathsPrev.soc),
                                             sum(deathsPrev.int)),
    by=.(id,country)] #sum over ages - per PT
 
-## jj convert costs
+
+## check names
+grep('socu',names(PT),value=TRUE)
+
+## TODO check logic
 ## cost (not including thct)
 PT[,costACF.soc.hh:= ## coprev HHCM'd
-    totindexscreen*(Screened*socu_a.hct +
-                       Presumptive*socu_a.tbe +
-                       Diagnosed*socu_a.att)]
+      totindexscreen*(Screened*`socu_Facility hhci` + #NOTE here using facility-based
+                      Presumptive*`socu_Presumptive TB evaluation` +
+                      Diagnosed*`socu_TB treatment`)]
 PT[,costACF.soc.nhh:=
         ## coprev not HHCM'd - not including PHC screening cost
-        (totindexscreen*Diagnosed*cdr*(socu_a.att+socu_a.tbe))]
+      (totindexscreen*Diagnosed*cdr*(`socu_Presumptive TB evaluation` +
+                                     `socu_TB treatment`))]
 PT[,costACF.int.hh:= ## coprev HHCM'd
-    totindexscreen*(Screened*intu_a.hct +
-                    Presumptive*intu_a.tbe +
-                    Diagnosed*intu_a.att)]
+      totindexscreen*(Screened*`intu_Facility hhci` +
+                      Presumptive*`intu_Presumptive TB evaluation`+
+                      Diagnosed*`socu_TB treatment`)]
 PT[,c('costACF.soc.hh','costACF.soc.nhh','costACF.int'):=
         .(sum(costACF.soc.hh),
           sum(costACF.soc.nhh),
           sum(costACF.int.hh)),
    by=.(id,country)] #sum over ages - per PT
-
-## ## cost (not including thct)
-## PT[,costACF.soc.hh:= ## coprev HHCM'd
-##       totindexscreen*(Screened*socu_a.hct +
-##                       Presumptive*socu_a.tbe +
-##                       Diagnosed*socu_a.att)]
-## PT[,costACF.soc.nhh:=
-##       ## coprev not HHCM'd - not including PHC screening cost
-##       (totindexscreen*Diagnosed*cdr*(socu_a.att+socu_a.tbe))]
-## PT[,costACF.int.hh:= ## coprev HHCM'd
-##       totindexscreen*(Screened*intu_a.hct +
-##                       Presumptive*intu_a.tbe +
-##                       Diagnosed*intu_a.att)]
-## PT[,c('costACF.soc.hh','costACF.soc.nhh','costACF.int'):=
-##       .(sum(costACF.soc.hh),
-##         sum(costACF.soc.nhh),
-##         sum(costACF.int.hh)),
-##    by=.(id,country)] #sum over ages - per PT
 
 
 ## ATT
@@ -961,9 +930,9 @@ PT[,c('dDALYacf','dDALY0acf'):=.(LYS*LSACF,LYS0*LSACF)]
 ## outcomes:
 ## cost
 PT[,cost.soc:=(1*costPT.soc+(RR-1)*0) + #PT cost, includes hhc or tbe
-        (1*attPT.soc+(RR-1)*attnoPT*socu_a.att)] #ATT cost
+      (1*attPT.soc+(RR-1)*attnoPT*`socu_TB treatment`)] #ATT cost
 PT[,cost.int:=(RR*costPT.int+0*0) + #PT cost, includes hhc or tbe
-        (RR*attPT.int+0*attnoPT*intu_a.att)] #ATT cost
+      (RR*attPT.int+0*attnoPT*`intu_TB treatment`)] #ATT cost
 ## cases
 PT[,cases.soc:=1*casesPT.soc + (RR-1)*casesnoPT]
 PT[,cases.int:=RR*casesPT.int + 0*casesnoPT]
@@ -1303,40 +1272,6 @@ fwrite(icebrr,file=fn)
 
 ## ================= TODO list ============================
 
-## TODO: coding/modelling
-
-## TODO run with different seed and check stable
-
-## ATT:
-## delta-CFR lower for HIV+ 5-14 decide on approach
-## tx outcome data from report? - improves over BL
-
-
-## PT:
-## model case-finding??
-## discounting outcomes?
-
-
-## TODO: questions in relation to parametrization and intervention
-## TB cases in HH??
-## unit costs HIV vs HHCM?
-## miliary, TBM ATT costs?
-## check parms
-
-
-## TODO: data
-## check new bac +, tx outcome and CXR
-
-
 ## NOTE
-## presentation/notes:
-## https://docs.google.com/presentation/d/1Oeyd0Nsoz3Ot9gIReESNGRgCGlIVTzWkfDm1essVSvE/edit#slide=id.gd17668ef47_0_0
-
-## draft report:
-https://docs.google.com/document/d/1qoe1DOoWriLkFxkB54kEWGSbicNJDvmSO9fCAFHlYRs/edit#
-
-## parms and results:
-## https://docs.google.com/spreadsheets/d/13XgE91YYijsIJk69v0Tx9bMibNAIUceA6jxDUxbP53w/edit#gid=1731792521
-
-## TIPPI living doc:
-## https://docs.google.com/document/d/1--o1pZoB6pyB59LGmw31-H-XvFUDrzbnmgzg-3fL_o0/edit
+## SHARED tippi folder:
+## https://drive.google.com/drive/folders/18i-KlJtvHVUjcFlHSFPsU6NIKbH2wVgq

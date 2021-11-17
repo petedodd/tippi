@@ -92,9 +92,14 @@ if(TRUE){## if(!file.exists(fn)){
 
 ## ===== CASCADE DATA
 ## blextract1.csv  blextract2.csv  resoure.int.csv
-## baseline cascade data TODO locate in report
+## baseline cascade data TODO from report
+## bl extract 1:
+## pt, pthiv from table O3.3 pg 15
 fn <- here('indata/blextract1.csv')
 B1 <- fread(fn)
+## bl extract 2:
+## see figure 10 pg 19 of report for PT
+## see figure 10 pg 18 of report for ATT
 fn <- here('indata/blextract2.csv')
 B2 <- fread(fn)
 ## cascades & resources during intervention

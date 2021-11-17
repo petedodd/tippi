@@ -9,7 +9,8 @@ if(shell){
   ACF <- args[2]                          #icnluding ACF or not
   ACF <- as.numeric(ACF)
 } else { #set by hand
-  rm(list=ls()) #clear all 
+  rm(list=ls()) #clear all
+  shell <- FALSE #whether running from shell script or not
   ##sensitivity analyses (mostly for PT):
   ## '' = basecase
   ## 'hhc' = including 10$ as SoC HHC cost
@@ -320,6 +321,8 @@ T[iso3=='ZWE' & id==1] #check
 names(T)[names(T)=='Baseline'] <- 'frac'
 names(T)[names(T)=='Intervention'] <- 'fracI'
 
+## TODO make sure that case-finding here does not include HHCM ACF
+## TODO HIV vs non-HIV entrypoint
 ## merge in life-expectancy & calculate DALY changes
 T <- merge(T,LYK[,.(iso3,age,LYS,LYS0)],by=c('iso3','age'),all.x=TRUE)
 T[,c('dDALY','dDALY0','dDALY.nohiv'):=.(LYS*LS,LYS0*LS,LYS*LS.hiv0)]
@@ -774,83 +777,40 @@ PT[,deathsPT.int:=(
 )]
 
 ##  --- costs
-## NOTE next one, maybe 2 paras could go into modeldata.R
-## cost data relevant to PT
-CD[,unique(Activity)]
 
-akeep <- c('Presumptive TB evaluation','TPT treatment',
-           'TB treatment',"TB contact investigation")
-CDS <- CD[Activity %in% akeep,.(iso3,Activity,
-                               uc.soc,uc.soc.sd,uc.int)]
-CDS[is.na(CDS)] <- 0
-CDS[Activity==akeep[1],act:='a.tbe']
-CDS[Activity==akeep[2],act:='a.tpt']
-CDS[Activity==akeep[3],act:='a.att']
-CDS[Activity==akeep[4],act:='a.hct']
-
-## NOTE correction here
-corfac <- merge(corfac,CK,by='country') #TODO this probably needs change
-
-## This has changed TODO
-tmp <- CDS[act=='a.hct'] #listed as contact investigation
-tmp <- merge(tmp,corfac[,.(iso3,scale)],by='iso3')
-tmp[,uc.int:=scale*uc.int]; tmp[,scale:=NULL]
-tmp[,act:='a.thct']; tmp[,Activity:='True HHCT']
-CDS <- rbind(CDS,tmp)
-
-
-CD1 <- copy(CDS) #so doesn't break on re-running
-CD1[,Activity:=NULL]
-CD1[uc.soc.sd==0,uc.soc.sd:=1.0] #safety
-if(SA=='hhc'){ #sensitivity analysis on SOC hhcost
-    CD1[act=='a.thct',uc.soc:=10.0]
-} else { #TODO check
-  CD1[act=='a.thct',uc.soc:=0.0]
-}
-
-## extend to PSA
-nr <- nrow(CD1)
-CDp <- CD1[rep(1:nr,each=max(PT$id))]
-CDp[,id:=rep(1:max(PT$id),nr)]
-CDp[,socu:=rgamma(nrow(CDp),shape=(uc.soc/uc.soc.sd)^2,
-                  scale=uc.soc.sd^2/uc.soc)]
-CDp[,intu:=socu + uc.int] #NOTE intu aren't incremental now
-CDp <- CDp[,.(iso3,id,act,socu,intu)]
-CDp <- dcast(CDp,iso3+id~act,value.var=c('socu','intu'))
-
-## merge in
-## PT <- merge(PT,CDp,by=c('iso3','id'))    #costs
+## merge in traced HHs per PT initiation
 PT <- merge(PT,PTC,by='country',all.x=TRUE) #cascade
+## calculate costs NOTE normalized for each row, not over ages
 
-## ## calculate costs NOTE normalized for each row, not over ages
-
-## convert tp PSA
+## turn cost data into PSA
 nr <- nrow(CD)
-CDp <- CD[rep(1:nr,each=max(PT$id))]
-CDp[,id:=rep(1:max(PT$id),nr)]
-CDp[is.na(CDp)] <- 0
-CDp[,socu:=rgamma(nrow(CDp),shape=(uc.soc/(uc.soc.sd+1e-6))^2,
+CDlong <- CD[rep(1:nr,each=max(PT$id))] #extending to no replicates
+CDlong[,id:=rep(1:max(PT$id),nr)]
+CDlong[is.na(CDlong)] <- 0 #setting NA to 0
+CDlong[,socu:=rgamma(nrow(CDlong),shape=(uc.soc/(uc.soc.sd+1e-6))^2,
                   scale=uc.soc.sd^2/(uc.soc+1e-6))]
-CDp[,intu:=socu + uc.int] #NOTE intu aren't incremental now
-CDp <- CDp[,.(iso3,Activity,id,act,socu,intu)]
-CDp <- dcast(CDp,iso3+id~Activity,value.var=c('socu','intu'))
+CDlong[,intu:=socu + uc.int] #NOTE intu aren't incremental now
+CDlong <- CDlong[,.(iso3,Activity,id,socu,intu)] #restrict
+CDlong <- dcast(CDlong,iso3+id~Activity,value.var=c('socu','intu'))#shape
 
-PT <- merge(PT,CDp,by=c('iso3','id'))    #costs
-names(PT)
+## merges cost data into activity data
+PT <- merge(PT,CDlong,by=c('iso3','id'),all.x=TRUE)    #costs
 
-## TODO check costing
+## TODO need community vs facility as entrypoint split
+## NOTE for now use community hhci
+## TODO is traceperhhcpt - is this people or households?
+## (check same as hhci)
 PT[,costPT.soc:=
-      (hhc/ptentry)*traceperhhcpt*`socu_Facility hhci`+ #facility CT
+      (hhc/ptentry)*traceperhhcpt*`socu_Community hhci`+#comm CT
       (1-hhc/ptentry)*`socu_Screening in HIV clinic`+   #HIV
       `socu_TPT treatment`                              #TPT
    ]
 
 PT[,costPT.int:=
-      (hhc/ptentry)*traceperhhcpt*`intu_Facility hhci`+ #facility CT
+      (hhc/ptentry)*traceperhhcpt*`intu_Community hhci`+#comm CT
       (1-hhc/ptentry)*`intu_Screening in HIV clinic`+   #HIV
       `intu_TPT treatment`                              #TPT
    ]
-
 
 ## --- ACF here
 ## should be getting ~6 per 100 index cases across ages
@@ -874,6 +834,8 @@ PT[,totindexscreen := traceperhhcpt*(hhc/ptentry)] #think this correct - weighte
 hhcascade <- dcast(HHCM[age %in% c('0-4','5-14')],age~activity)
 PT <- merge(PT,hhcascade,by='age',all.x=TRUE)
 
+
+## --- outcomes on coprevalence and deaths
 
 ## coprevalent detectable children
 PT[,coprev:=totindexscreen*Diagnosed] #numbers coprevalent

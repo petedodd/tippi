@@ -595,6 +595,7 @@ ggsave(GP,file=here('graphs/drivers_att_DALY.png'),h=10,w=10)
 PT <- edat[quant=='px']
 
 ## format relevant PSA data by age
+## NOTE check whether HHhivprev could be removed
 PSAage <- PSA[,.(id,prog04,prog514,HHhivprev04,HHhivprev514,
                  LTBI04,LTBI514)]
 PSAage <- melt(PSAage,id='id')
@@ -668,10 +669,7 @@ PT <- merge(PT,hag,by=c('country','age'),all.x = TRUE)
 PT[,ptentry:=hentry+hhc]  #denominator for age-stratified calx
 
 
-## ARI assumption for HIV? or similar
-## ab <- getAB(5e-3,(5e-3/1.96)^2)
-## curve(dbeta(x,ab$a,ab$b),from=0,to=1e-2)
-## quantile(rbeta(1e4,ab$a,ab$b),c(0.25,0.75))*1e2
+## ARI assumption
 PT <- merge(PT,PSA[,.(id,ari)],by='id',all.x=TRUE)
 
 ## === outcomes
@@ -715,7 +713,7 @@ PT <- merge(PT,ptsuccess,by='country')
 ## PT[,casesPT.nohiv:=casesnoPT.nohiv*iptRRtstpos]
 
 ## possibly account for changes in incomplete treatment
-PT[,c('fs','fi'):=1.0]
+PT[,c('fs','fi'):=1.0] #proportion completing TODO check
 if(SA=='txd'){ #sensitivity analysis around completion
     PT[,c('fs','fi'):=.(BL,INT)]
 }
@@ -791,7 +789,7 @@ CDS[Activity==akeep[3],act:='a.att']
 CDS[Activity==akeep[4],act:='a.hct']
 
 ## NOTE correction here
-corfac <- merge(corfac,CK,by='country')
+corfac <- merge(corfac,CK,by='country') #TODO this probably needs change
 
 ## This has changed TODO
 tmp <- CDS[act=='a.hct'] #listed as contact investigation
@@ -1038,7 +1036,7 @@ PT2 <- merge(PT2,CK,by='country') #country iso3 merged on
 ## --- CEA and CEAC plots ---
 
 ## CEA plot
-ggplot(PT1,aes(dDALY,Dcost)) +
+GP <- ggplot(PT1,aes(dDALY,Dcost)) +
     geom_vline(xintercept = 0)+
     geom_hline(yintercept = 0)+
     geom_point(alpha=0.1,shape=1) +
@@ -1049,11 +1047,12 @@ ggplot(PT1,aes(dDALY,Dcost)) +
     xlab('Incremental discounted life-years saved')+
     ylab('Incremental cost (USD)')+
     theme(legend.position = "top" )
+if(!shell) GP
 
 ## save out
 fn1 <- glue(here('graphs/CEallPT')) + SA + '.' + ACF + '.png'
 fn2 <- glue(here('graphs/CEallPT')) + SA + '.' + ACF + '.pdf'
-ggsave(file=fn1,w=10,h=10); ggsave(file=fn2,w=10,h=10)
+ggsave(GP,file=fn1,w=10,h=10); ggsave(GP,file=fn2,w=10,h=10)
 
 
 ## make CEAC data
@@ -1069,12 +1068,12 @@ pceacd <- rbindlist(pceacd)
 
 ## make CEAC plot
 PCEAC <- make.ceac.plot(pceacd,xpad=50)
-PCEAC
+if(!shell) PCEAC
 
 ## save out
 fn1 <- glue(here('graphs/CEACpt')) + SA + '.' + ACF + '.png'
 fn2 <- glue(here('graphs/CEACpt')) + SA + '.' + ACF + '.pdf'
-ggsave(file=fn1,w=10,h=10); ggsave(file=fn2,w=10,h=10)
+ggsave(PCEAC,file=fn1,w=10,h=10); ggsave(PCEAC,file=fn2,w=10,h=10)
 
 
 ## output where things X 50%
@@ -1235,7 +1234,7 @@ PTT[,dDALY:=dDALY.att*BR/(1+BR) + dDALY.pt*1/(1+BR)] #weighted DALYs
 
 
 ## CEA plot
-ggplot(PTT,aes(dDALY,Dcost)) +
+GP <- ggplot(PTT,aes(dDALY,Dcost)) +
     geom_vline(xintercept = 0)+
     geom_hline(yintercept = 0)+
     geom_point(alpha=0.1,shape=1) +
@@ -1246,11 +1245,12 @@ ggplot(PTT,aes(dDALY,Dcost)) +
     xlab('Incremental discounted life-years saved')+
     ylab('Incremental cost (USD)')+
     theme(legend.position = "top" )
+if(!shell) GP
 
 ## save out
 fn1 <- glue(here('graphs/CEallALL')) + SA + '.' + ACF + '.png'
 fn2 <- glue(here('graphs/CEallALL')) + SA + '.' + ACF + '.pdf'
-ggsave(file=fn1,w=10,h=10); ggsave(file=fn2,w=10,h=10)
+ggsave(GP,file=fn1,w=10,h=10); ggsave(GP,file=fn2,w=10,h=10)
 
 
 ## make CEAC data
@@ -1266,12 +1266,12 @@ pceacd <- rbindlist(pceacd)
 
 ## make CEAC plot
 PCEAC <- make.ceac.plot(pceacd,xpad=50)
-PCEAC
+if(!shell) PCEAC
 
 ## save out
 fn1 <- glue(here('graphs/CEACall')) + SA + '.' + ACF + '.png'
 fn2 <- glue(here('graphs/CEACall')) + SA + '.' + ACF + '.pdf'
-ggsave(file=fn1,w=10,h=10); ggsave(file=fn2,w=10,h=10)
+ggsave(PCEAC,file=fn1,w=10,h=10); ggsave(PCEAC,file=fn2,w=10,h=10)
 
 
 ##  combined ICERS

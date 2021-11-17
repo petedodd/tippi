@@ -40,3 +40,10 @@ test
 
 Questions:
 - ACF using FB screen cost?
+
+
+# TODO from Nyasha call
+
+- need to check unit costs, traceperhhcpt, totindexscreen - all mean the right thing
+- check logic of nhh ACF bits
+- go back include the right entry-point splits

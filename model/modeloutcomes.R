@@ -50,8 +50,8 @@ load(file=here('data/PTC.Rdata')) #PT cascade
 load(file=here('data/CD.Rdata'))  #rawer cost data
 load(file=here('data/ASM.Rdata')) #age splits
 load(file=here('data/BC.Rdata')) #PT v ATT split
-load(file=here('data/corfac.Rdata'))          #HH v ATT screen factor
-load(file=here('data/HHCM.Rdata'))            #HHCM cascade
+load(file=here('data/corfac.Rdata'))  #HH v ATT screen factor
+load(file=here('data/HHCM.Rdata'))   #HHCM cascade
 load(file=here('data/BL.Rdata'))           #BL extract HIV
 load(file=here('data/INT.Rdata'))         #INT cascade data
 load(file=here('data/CET.Rdata'))         #CE thresholds
@@ -800,6 +800,7 @@ PT <- merge(PT,CDlong,by=c('iso3','id'),all.x=TRUE)    #costs
 ## NOTE for now use community hhci
 ## TODO is traceperhhcpt - is this people or households?
 ## (check same as hhci)
+## jk TODO see below totindexscreen?
 PT[,costPT.soc:=
       (hhc/ptentry)*traceperhhcpt*`socu_Community hhci`+#comm CT
       (1-hhc/ptentry)*`socu_Screening in HIV clinic`+   #HIV
@@ -831,6 +832,7 @@ PT[,.(sum(ptentry),sum(hhc)),by=.(id,country)]
 PT[,totindexscreen := traceperhhcpt*(hhc/ptentry)] #think this correct - weighted @end
 
 ## merge in HHCM cascade in right form (this splits out by age again)
+## this is where numbers screened come in (aggregate across countries)
 hhcascade <- dcast(HHCM[age %in% c('0-4','5-14')],age~activity)
 PT <- merge(PT,hhcascade,by='age',all.x=TRUE)
 
@@ -861,17 +863,22 @@ grep('socu',names(PT),value=TRUE)
 
 ## TODO check logic
 ## cost (not including thct)
+names(PT)
+
+## jj
+## --- costs for ACF component
+## NOTE
+## TODO align the attached to correct overall thru-flo
 PT[,costACF.soc.hh:= ## coprev HHCM'd
-      totindexscreen*(Screened*`socu_Facility hhci` + #NOTE here using facility-based
-                      Presumptive*`socu_Presumptive TB evaluation` +
+      totindexscreen*(Presumptive*`socu_Presumptive TB evaluation` +
                       Diagnosed*`socu_TB treatment`)]
+## TODO check logic and how used
 PT[,costACF.soc.nhh:=
-        ## coprev not HHCM'd - not including PHC screening cost
-      (totindexscreen*Diagnosed*cdr*(`socu_Presumptive TB evaluation` +
-                                     `socu_TB treatment`))]
+      ## coprev not HHCM'd - not including PHC screening cost
+      (totindexscreen*cdr*(Presumptive*`socu_Presumptive TB evaluation` +
+                           Diagnosed*`socu_TB treatment`))]
 PT[,costACF.int.hh:= ## coprev HHCM'd
-      totindexscreen*(Screened*`intu_Facility hhci` +
-                      Presumptive*`intu_Presumptive TB evaluation`+
+      totindexscreen*(Presumptive*`intu_Presumptive TB evaluation`+
                       Diagnosed*`socu_TB treatment`)]
 PT[,c('costACF.soc.hh','costACF.soc.nhh','costACF.int'):=
         .(sum(costACF.soc.hh),
@@ -880,7 +887,7 @@ PT[,c('costACF.soc.hh','costACF.soc.nhh','costACF.int'):=
    by=.(id,country)] #sum over ages - per PT
 
 
-## ATT
+## keeping count of ATTs
 PT[,ATTACF.hh:=totindexscreen*(Diagnosed)]
 PT[,ATTACF.nhh:=totindexscreen*(Diagnosed)*cdr]
 PT[,c('ATTACF.hh','ATTACF.nhh'):=.(sum(ATTACF.hh),

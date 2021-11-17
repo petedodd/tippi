@@ -1,5 +1,5 @@
 ## flags for sensitivity analyses
-shell <- FALSE
+shell <- FALSE #whether running from shell script or not
 if(shell){
   ## running from shell
   args <- commandArgs(trailingOnly=TRUE)
@@ -33,7 +33,7 @@ library(glue)
 
 
 ## for CEAC plotting
-source(here('../dataprep/tippifunctions.R'))
+source(here('../dataprep/tippifunctions.R')) #CEAC & plotting utils
 
 ## ===== INPUT DATA
 ## these are made by modeldata.R
@@ -81,7 +81,7 @@ INT <- INT[,..keep]
 INT[is.na(INT)] <- 0
 
 ## part0
-## ================= PSA data for both ============================
+## ================= base PSA data for both analyses ===================
 ## make PSA df for outcome data
 PSA <- makePSA(max(edat$id),PZ,
                dbls = list(c('hivartOR:mn','hivartOR:sg')))
@@ -101,7 +101,7 @@ CFRdatam[,variable:=gsub("Y$|O$","",variable)]
 CFRdatam <- dcast(CFRdatam,id+age~variable,value.var = 'value')
 CFRdatam[,c('dN','dA'):=.(notx-ontx,notxHA-ontxHA)] #delta-CFR
 
-## changes in ATT success
+## changes in ATT or PT success
 nmz <- names(INT)[-1]
 txsuccess <- data.table(
     country=nmz,
@@ -130,7 +130,7 @@ CFRdatam[,dA:=pmax(dA,dN)]
 ## NOTE see also PSA manipulation specific to PT in second part
 
 
-## HHCM cascade in aggregate
+## HHCM cascade in aggregate: activity per index
 ## NOTE aggregated over mode TODO - think about country-specific mode
 HHCM <- HHCM[,.(value=sum(value)),by=.(age,activity)]
 ## make relative to index cases with HHCM
@@ -158,7 +158,8 @@ CETM
 ## change names DBC so presumptive identified is screened
 extra <- as.data.table(expand.grid(metric='Screened for symptoms',
                                    country=unique(ATR$country)))
-extra <- merge(extra,DBC[metric=='Presumptive TB identified', #TODO check correct screen number
+extra <- merge(extra,DBC[metric=='Presumptive TB identified',
+                         ##TODO check correct screen number
                           .(country,ratio)],
                by='country')
 
@@ -169,13 +170,13 @@ E1 <- merge(E1,CK,by='country')
 
 ## merge against cascade/cost data
 K <- merge(ART2,E1,by=c('iso3','metric'),all.x = TRUE)
-K[is.na(ratio),ratio:=1]
+K[is.na(ratio),ratio:=1] #TB tx or dx
 K[,country:=NULL]
 K[iso3=='ZWE']
 ##NOTE this same structure (K) is developed in model data
 ## would be best to ensure consistency and remove from this file
 
-## computing costs by activity 
+## computing costs by activity: soc -> int cascade change + increment
 KA <- copy(K)
 KA[,cost.soc:=frac*uc.soc/ratio] #cost assuming resource use same as soc
 KA[,cost.int:=frac*(uc.soc+uc.int)] #including scale-up
@@ -183,31 +184,34 @@ KA[iso3=='MWI']
 
 
 ## formatting and plotting
-KAM <- melt(KA[metric!='Diagnosed with TB',.(metric,iso3,cost.soc,cost.int)],
+KAM <- melt(KA[metric!='Diagnosed with TB',
+               .(metric,iso3,cost.soc,cost.int)],
             id.vars = c('metric','iso3'))
 KAM <- merge(KAM,CK,by='iso3')
 KAM$metric <- factor(KAM$metric,
                      levels=c('Screened for symptoms',
                               'Presumptive TB identified',
                               'Presumptive TB tested on Xpert',
-                              'TB treatment'),ordered = TRUE) #TODO fix levels
+                              'TB treatment'),
+                     ordered = TRUE) #TODO fix levels
 KAM[grepl('soc',variable),variable:='SOC']
 KAM[grepl('int',variable),variable:='Intervention']
 
 
-ggplot(KAM,aes(iso3,value,fill=metric)) +
+GP <- ggplot(KAM,aes(iso3,value,fill=metric)) +
   geom_bar(stat='identity') +
   facet_wrap(~variable) +
   scale_fill_colorblind() +
   scale_y_continuous(label=comma)+
   xlab('Country') + ylab('Cost per child treated (USD)') +
   theme(axis.text.x = element_text(angle = 45, vjust = 1.0, hjust=1))
+if(!shell) GP
 
-ggsave(here('graphs/cost_cascade.png'),h=6,w=10)
-ggsave(here('graphs/cost_cascade.pdf'),h=6,w=10)
+ggsave(GP,file=here('graphs/cost_cascade.png'),h=6,w=10)
+ggsave(GP,file=here('graphs/cost_cascade.pdf'),h=6,w=10)
 
 
-ggplot(KAM[variable=='Intervention'],
+GP <- ggplot(KAM[variable=='Intervention'],
        aes(country,value,fill=metric)) +
   geom_bar(stat='identity',position='fill') +
   facet_wrap(~variable) +
@@ -216,10 +220,11 @@ ggplot(KAM[variable=='Intervention'],
   xlab('Country') + ylab('Fraction of cost per child treated by stage') +
     theme(axis.text.x = element_text(angle = 45, vjust = 1.0, hjust=1),
           legend.position = 'top',legend.title = element_blank())
+if(!shell) GP
 
 
-ggsave(here('graphs/cost_cascade2.png'),h=6,w=9)
-ggsave(here('graphs/cost_cascade2.pdf'),h=6,w=9)
+ggsave(GP,file=here('graphs/cost_cascade2.png'),h=6,w=9)
+ggsave(GP,file=here('graphs/cost_cascade2.pdf'),h=6,w=9)
 
 names(K)
 
@@ -282,7 +287,7 @@ T[,CFRtx.soc:=CFRtx]
 if(SA=='txd'){                        #sensitivity analysis
     T[,CFRtx.soc:=CFRtx * (1-BL)/(1-INT)] #scale up tx CFR by non-success
 }
- 
+
 
 ## incremental lives saved - change in implied by RR
 ## T[,LS:=(RR-1)*dCFR]
@@ -304,13 +309,13 @@ if(SA=='txd'){                        #sensitivity analysis
 ## S <- CDR[qty=='frac',.(iso3,age,frac=value)] #frac us WHO est case mix
 S <- ASM[qty=='tx']
 S <- S[rep(1:nrow(S),each=max(T$id))]
-S <- S[,frac:=rbeta(nrow(S),`0-4`,`5-14`)]
+S <- S[,frac:=rbeta(nrow(S),`0-4`,`5-14`)] #approx flat conjugate prior
 S[,id:=rep(1:max(T$id),nrow(S)/max(T$id))]
 S <- dcast(S[,.(country,id,period,frac)],
            country+id~period,value.var = 'frac')
 T <- merge(T,S,by=c('country','id'),all.x=TRUE)
-T[age=='5-14',Baseline:=1-Baseline]
-T[age=='5-14',Intervention:=1-Intervention]
+T[age=='5-14',Baseline:=1-Baseline] #defined as prop u5
+T[age=='5-14',Intervention:=1-Intervention] #defined as prop u5
 T[iso3=='ZWE' & id==1] #check
 names(T)[names(T)=='Baseline'] <- 'frac'
 names(T)[names(T)=='Intervention'] <- 'fracI'
@@ -319,12 +324,14 @@ names(T)[names(T)=='Intervention'] <- 'fracI'
 T <- merge(T,LYK[,.(iso3,age,LYS,LYS0)],by=c('iso3','age'),all.x=TRUE)
 T[,c('dDALY','dDALY0','dDALY.nohiv'):=.(LYS*LS,LYS0*LS,LYS*LS.hiv0)]
 
-## BUG
+## BUG - think just about missing country data
 summary(T)
 T[,table(is.na(frac),iso3)] #NOTE frac is NA for CMR, KEN, LSO
 ## for now fill in
-fz <- T[sample(which(!is.na(frac)),size=sum(is.na(frac)),replace = TRUE),frac]
-fzi <- T[sample(which(!is.na(fracI)),size=sum(is.na(fracI)),replace = TRUE),fracI]
+fz <- T[sample(which(!is.na(frac)),size=sum(is.na(frac)),
+               replace = TRUE),frac]
+fzi <- T[sample(which(!is.na(fracI)),size=sum(is.na(fracI)),
+                replace = TRUE),fracI]
 T[is.na(frac),frac:=fz]
 T[is.na(fracI),fracI:=fzi]
 
@@ -365,7 +372,7 @@ summary(T1)
 ## --- CEA and CEAC plots ---
 
 ## CEA plot
-ggplot(T1,aes(dDALY,Dcost)) +
+GP <- ggplot(T1,aes(dDALY,Dcost)) +
     geom_vline(xintercept = 0)+
     geom_hline(yintercept = 0)+
     geom_point(alpha=0.1,shape=1) +
@@ -376,10 +383,11 @@ ggplot(T1,aes(dDALY,Dcost)) +
     xlab('Incremental discounted life-years saved')+
     ylab('Incremental cost (USD)')+
     theme(legend.position = "top" )
+if(!shell) GP
 
 fn1 <- glue(here('graphs/CEall')) + SAT + '.png'
 fn2 <- glue(here('graphs/CEall')) + SAT + '.pdf'
-ggsave(file=fn1,w=10,h=10); ggsave(file=fn2,w=10,h=10)
+ggsave(GP,file=fn1,w=10,h=10); ggsave(GP,file=fn2,w=10,h=10)
 
 
 ## make CEAC data
@@ -395,11 +403,12 @@ ceacd <- rbindlist(ceacd)
 
 ## make CEAC plot TODO check if need to exclude mean -ves?
 CEAC <- make.ceac.plot(ceacd,xpad=50)
-CEAC
+if(!shell) CEAC
+
 
 fn1 <- glue(here('graphs/CEAC')) + SAT + '.png'
 fn2 <- glue(here('graphs/CEAC')) + SAT + '.pdf'
-ggsave(file=fn1,w=7,h=7); ggsave(file=fn2,w=7,h=7)
+ggsave(CEAC,file=fn1,w=7,h=7); ggsave(CEAC,file=fn2,w=7,h=7)
 
 
 
@@ -561,18 +570,22 @@ XYc <- merge(XM,Y,by='country',all.x=TRUE) #merge together
 ## make and save plots
 
 ## cost
-ggplot(XYc,aes(value,Dcost,col=iso3)) +
+GP <- ggplot(XYc,aes(value,Dcost,col=iso3)) +
   geom_point() +
   facet_wrap(~variable,scales = 'free')
-ggsave(here('graphs/drivers_att_cost2.pdf'),h=10,w=10)
-ggsave(here('graphs/drivers_att_cost2.png'),h=10,w=10)
+if(!shell) GP
+
+ggsave(GP,file=here('graphs/drivers_att_cost2.pdf'),h=10,w=10)
+ggsave(GP,file=here('graphs/drivers_att_cost2.png'),h=10,w=10)
 
 ## DALYs
-ggplot(XYc,aes(value,dDALY,col=iso3)) +
+GP <- ggplot(XYc,aes(value,dDALY,col=iso3)) +
   geom_point() +
   facet_wrap(~variable,scales = 'free')
-ggsave(here('graphs/drivers_att_DALY.pdf'),h=10,w=10)
-ggsave(here('graphs/drivers_att_DALY.png'),h=10,w=10)
+if(!shell) GP
+
+ggsave(GP,file=here('graphs/drivers_att_DALY.pdf'),h=10,w=10)
+ggsave(GP,file=here('graphs/drivers_att_DALY.png'),h=10,w=10)
 
 
 

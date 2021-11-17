@@ -85,7 +85,7 @@ if(TRUE){## if(!file.exists(fn)){
     setkey(LYK,age)
     save(LYK,file=fn)
 } else {
-  
+
     load(file=fn)
 }
 
@@ -271,7 +271,7 @@ CD[Activity=="Xpert testing",.(Country,uc.soc,uc.soc.sd,uc.int)] #check
 CD[Activity=='Presumptive TB evaluation',
    metric:="Presumptive TB identified"] #NM
 
-## [1] "Community hhci"              "Facility hhci"              
+## [1] "Community hhci"              "Facility hhci"
 ## [3] "Screening in HIV clinic"     "Screening in non-HIV clinic"
 
 ## TODO need to split out HIV component?

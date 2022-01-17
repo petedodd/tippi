@@ -58,6 +58,10 @@ load(file=here('data/CET.Rdata'))         #CE thresholds
 load(file=here('data/PD.Rdata'))           #modelling parmeters
 PZ <- parse.parmtable(PD)                     #make into parm object
 
+## TODO move to other file
+SBEP <- fread(here('indata/screened_by_entrypoint.csv'))
+SBEP[,iso3:=c("CMR","DIV","COD","KEN","LSO","MWI","UGA","ZWE")]
+
 ## --- settings
 set.seed(1234)
 ceactop <- 3e3 #top to plot in CEAC curves
@@ -132,7 +136,7 @@ CFRdatam[,dA:=pmax(dA,dN)]
 
 
 ## HHCM cascade in aggregate: activity per index
-## NOTE aggregated over mode TODO - think about country-specific mode
+## NOTE aggregated over mode TODO - think about country-specific model
 HHCM <- HHCM[,.(value=sum(value)),by=.(age,activity)]
 ## make relative to index cases with HHCM
 HHCM[,value:=value/HHCM[activity=="index cases with HHCM",value]]

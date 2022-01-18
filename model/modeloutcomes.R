@@ -641,7 +641,7 @@ CDRs[,summary(cdr)]
 PT <- merge(PT,CDRs[,.(iso3,age,id,cdr)],by=c('iso3','age','id'))
 
 
-## age & HIV-route splits
+## age & HIV-route splits for PT
 ## NOTE uncertainty probably not necessary due to large numbers
 ## age splits
 tmp <- INT[metric %in% c("PThhcu5pc","PTHIVentryu5pc")]
@@ -676,7 +676,7 @@ PT <- merge(PT,hag,by=c('country','age'),all.x = TRUE)
 PT[,ptentry:=hentry+hhc]  #denominator for age-stratified calx
 
 
-## ARI assumption
+## ARI assumption for risks in HIV entry-point cohort
 PT <- merge(PT,PSA[,.(id,ari)],by='id',all.x=TRUE)
 
 ## === outcomes
@@ -781,7 +781,6 @@ PT[,deathsPT.int:=(
 )]
 
 ##  --- costs
-
 ## merge in traced HHs per PT initiation
 PT <- merge(PT,PTC,by='country',all.x=TRUE) #cascade
 ## calculate costs NOTE normalized for each row, not over ages
@@ -800,22 +799,32 @@ CDlong <- dcast(CDlong,iso3+id~Activity,value.var=c('socu','intu'))#shape
 ## merges cost data into activity data
 PT <- merge(PT,CDlong,by=c('iso3','id'),all.x=TRUE)    #costs
 
-## TODO need community vs facility as entrypoint split
-## NOTE for now use community hhci
+## the split between facility-based vs community-based HH screening
+## TODO is this the same under soc/int?
+SBEP[,.(iso3,CBhhcm,FBhhcm)] # raw numbers
+CvF <- SBEP[rep(1:nrow(SBEP),each=max(PT$id)),.(iso3,CBhhcm,FBhhcm)]
+CvF[,id:=rep(1:max(PT$id),nrow(SBEP))]
+CvF[,propFB:=rbeta(nrow(CvF),shape1=FBhhcm,shape2=CBhhcm)] #use numbers in beta dist
+PT <- merge(PT,CvF[,.(iso3,id,propFB)],by=c('iso3','id'))
+
+summary(PT) #BUG NAs?
+
 ## TODO is traceperhhcpt - is this people or households?
 ## (check same as hhci)
 ## jk TODO see below totindexscreen?
 PT[,costPT.soc:=
-      (hhc/ptentry)*traceperhhcpt*`socu_Community hhci`+#comm CT
-      (1-hhc/ptentry)*`socu_Screening in HIV clinic`+   #HIV
+      (1-propFB)*traceperhhcpt*`socu_Community hhci`+   #comm CT
+      (propFB)*traceperhhcpt*`socu_Facility hhci`+      #facility CT
       `socu_TPT treatment`                              #TPT
    ]
 
+## TODO are these incrememental? traceperhhcpt
 PT[,costPT.int:=
-      (hhc/ptentry)*traceperhhcpt*`intu_Community hhci`+#comm CT
-      (1-hhc/ptentry)*`intu_Screening in HIV clinic`+   #HIV
+      (1-propFB)*traceperhhcpt*`intu_Community hhci`+   #comm CT
+      (propFB)*traceperhhcpt*`intu_Facility hhci`+      #facility CT
       `intu_TPT treatment`                              #TPT
    ]
+
 
 ## --- ACF here
 ## should be getting ~6 per 100 index cases across ages

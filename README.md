@@ -63,6 +63,8 @@ probably enters in analogous way to Xpert
 
 see also joint intervention
 
+
+Are FB vs CB splits same SoC vs INT?
 ---- 
 
 PETE

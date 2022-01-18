@@ -198,7 +198,7 @@ KAM$metric <- factor(KAM$metric,
                               'Presumptive TB identified',
                               'Presumptive TB tested on Xpert',
                               'TB treatment'),
-                     ordered = TRUE) #TODO fix levels
+                     ordered = TRUE)
 KAM[grepl('soc',variable),variable:='SOC']
 KAM[grepl('int',variable),variable:='Intervention']
 
@@ -318,6 +318,11 @@ S <- S[,frac:=rbeta(nrow(S),`0-4`,`5-14`)] #approx flat conjugate prior
 S[,id:=rep(1:max(T$id),nrow(S)/max(T$id))]
 S <- dcast(S[,.(country,id,period,frac)],
            country+id~period,value.var = 'frac')
+
+## BUG from ASM - only 5 countries
+S[,unique(country)]
+T[,unique(country)]
+
 T <- merge(T,S,by=c('country','id'),all.x=TRUE)
 T[age=='5-14',Baseline:=1-Baseline] #defined as prop u5
 T[age=='5-14',Intervention:=1-Intervention] #defined as prop u5
@@ -331,6 +336,7 @@ names(T)[names(T)=='Intervention'] <- 'fracI'
 T <- merge(T,LYK[,.(iso3,age,LYS,LYS0)],by=c('iso3','age'),all.x=TRUE)
 T[,c('dDALY','dDALY0','dDALY.nohiv'):=.(LYS*LS,LYS0*LS,LYS*LS.hiv0)]
 
+summary(S)
 ## BUG - think just about missing country data
 summary(T)
 T[,table(is.na(frac),iso3)] #NOTE frac is NA for CMR, KEN, LSO
@@ -674,7 +680,7 @@ fwrite(hago,file=here('outdata/PTC.csv')) #save as output too
 PT <- merge(PT,hag,by=c('country','age'),all.x = TRUE)
 ## NOTE this is normalized over route x age - age-stratified results will need renorm'n:
 PT[,ptentry:=hentry+hhc]  #denominator for age-stratified calx
-
+## TODO check hhc
 
 ## ARI assumption for risks in HIV entry-point cohort
 PT <- merge(PT,PSA[,.(id,ari)],by='id',all.x=TRUE)
@@ -941,6 +947,7 @@ PT[,LS:=-(deaths.int-deaths.soc)]
 ## add in DALYs etc
 PT[,c('dDALY','dDALY0'):=.(LYS*LS,LYS0*LS)]
 
+## TODO check
 ## ACF cascade NOTE must include only hh PT
 ## denominators haven't been summed over PT-age, hhc correct split
 ## coprev weighted by hh/ptentry - needs ptentry to weight PT-age

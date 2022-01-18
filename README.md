@@ -74,6 +74,7 @@ PETE
 - HH screen split (from ICF)
 - overall cost drivers correct
 - structuring the appendix
+- trace ASM & BC inputs
 
 NYASHA
 - costing code base

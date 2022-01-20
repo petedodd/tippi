@@ -607,12 +607,34 @@ PD <- read.csv(here('indata/TIPPIresults - TIPPIparms.csv'))
 save(PD,file=here('data/PD.Rdata'))
 
 
-## ASM age splits file
+## --- data for ASM age splits file & BC
 D <- fread(here('../dataprep/outdata/D.csv'))
 T <- fread(here('../dataprep/outdata/T.csv'))
 P <- fread(here('../dataprep/outdata/P.csv'))
 
 
+## BC rate ratios
+TC <- T[,.(ATT.Baseline.Num=sum(Baseline.Num),ATT.Intervention.Num=sum(Intervention.Num),
+          Baseline.FT=sum(Baseline.FT),Intervention.FT=sum(Intervention.FT)),by=.(Country)]
+PC <- P[,.(PT.Baseline.Num=sum(Baseline.Num),PT.Intervention.Num=sum(Intervention.Num),
+          Baseline.FT=sum(Baseline.FT),Intervention.FT=sum(Intervention.FT)),by=.(Country)]
+TC[,ATT.Baseline.Rate:=ATT.Baseline.Num/Baseline.FT]; TC[,ATT.Intervention.Rate:=ATT.Intervention.Num/Intervention.FT];
+PC[,PT.Baseline.Rate:=PT.Baseline.Num/Baseline.FT]; PC[,PT.Intervention.Rate:=PT.Intervention.Num/Intervention.FT];
+
+BC <- merge(TC[,.(Country,ATT.Baseline.Num,ATT.Intervention.Num,ATT.Baseline.Rate,ATT.Intervention.Rate)],
+            PC[,.(Country,PT.Baseline.Num,PT.Intervention.Num,PT.Baseline.Rate,PT.Intervention.Rate)],
+            by='Country'
+            )
+
+BC <- BC[,.(Country,
+            BR=ATT.Baseline.Rate/PT.Baseline.Rate,
+            IR=ATT.Intervention.Rate/PT.Intervention.Rate
+            )]
+
+save(BC,file=here('data/BC.Rdata'))
+
+
+## ASM age splits
 (P <- P[,.(Baseline=sum(Baseline.Num),Intervention=sum(Intervention.Num)),by=.(Country,age)])
 (D <- D[,.(Baseline=sum(Baseline.Num),Intervention=sum(Intervention.Num)),by=.(Country,age)])
 (T <- T[,.(Baseline=sum(Baseline.Num),Intervention=sum(Intervention.Num)),by=.(Country,age)])
@@ -629,6 +651,9 @@ names(ASM)[c(1,3)] <- c('country','period')
 ASM[,`0-14`:=NULL]
 
 save(ASM,file=here('data/ASM.Rdata'))
+
+
+
 
 ## screening entry-point
 SBEP <- fread(here('indata/screened_by_entrypoint.csv'))

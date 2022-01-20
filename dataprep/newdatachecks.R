@@ -548,3 +548,29 @@ Pvls
 
 Pstats <- data.table(name=nmz,value=Pvls)
 fwrite(Pstats,file=here('outdata/Pstats.csv'))
+
+
+## === additional data used by the modelling
+
+## ASM age splits file
+D <- fread(here('outdata/D.csv'))
+T <- fread(here('outdata/T.csv'))
+P <- fread(here('outdata/P.csv'))
+
+
+(P <- P[,.(Baseline=sum(Baseline.Num),Intervention=sum(Intervention.Num)),by=.(Country,age)])
+(D <- D[,.(Baseline=sum(Baseline.Num),Intervention=sum(Intervention.Num)),by=.(Country,age)])
+(T <- T[,.(Baseline=sum(Baseline.Num),Intervention=sum(Intervention.Num)),by=.(Country,age)])
+
+P[,qty:='pt']
+D[,qty:='dx']
+T[,qty:='tx']
+
+
+ASM <- rbindlist(list(P,D,T))
+ASM <- melt(ASM,id=c('Country','age','qty'))
+ASM <- dcast(ASM,Country + qty + variable ~ age)
+names(ASM)[c(1,3)] <- c('country','period')
+ASM[,`0-14`:=NULL]
+
+save(ASM,file=here('../model/data/ASM.Rdata'))

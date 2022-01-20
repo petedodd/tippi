@@ -316,11 +316,6 @@ S <- S[,frac:=rbeta(nrow(S),`0-4`,`5-14`)] #approx flat conjugate prior
 S[,id:=rep(1:max(T$id),nrow(S)/max(T$id))]
 S <- dcast(S[,.(country,id,period,frac)],
            country+id~period,value.var = 'frac')
-
-## BUG from ASM - only 5 countries
-S[,unique(country)]
-T[,unique(country)]
-
 T <- merge(T,S,by=c('country','id'),all.x=TRUE)
 T[age=='5-14',Baseline:=1-Baseline] #defined as prop u5
 T[age=='5-14',Intervention:=1-Intervention] #defined as prop u5
@@ -333,18 +328,6 @@ names(T)[names(T)=='Intervention'] <- 'fracI'
 ## merge in life-expectancy & calculate DALY changes
 T <- merge(T,LYK[,.(iso3,age,LYS,LYS0)],by=c('iso3','age'),all.x=TRUE)
 T[,c('dDALY','dDALY0','dDALY.nohiv'):=.(LYS*LS,LYS0*LS,LYS*LS.hiv0)]
-
-summary(S)
-## BUG - think just about missing country data
-summary(T)
-T[,table(is.na(frac),iso3)] #NOTE frac is NA for CMR, KEN, LSO
-## for now fill in
-fz <- T[sample(which(!is.na(frac)),size=sum(is.na(frac)),
-               replace = TRUE),frac]
-fzi <- T[sample(which(!is.na(fracI)),size=sum(is.na(fracI)),
-                replace = TRUE),fracI]
-T[is.na(frac),frac:=fz]
-T[is.na(fracI),fracI:=fzi]
 
 ## calculate differential costs & DALYs over ages
 ## NOTE frac here is age split

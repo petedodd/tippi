@@ -795,6 +795,7 @@ CvF[,propFB:=rbeta(nrow(CvF),shape1=FBhhcm,shape2=CBhhcm)] #use numbers in beta 
 PT <- merge(PT,CvF[,.(iso3,id,propFB)],by=c('iso3','id'))
 
 summary(PT) #BUG NAs?
+PT[,table(iso3,is.na(`intu_TB treatment`))] #CMR & LSO
 
 ## TODO is traceperhhcpt - is this people or households?
 ## (check same as hhci)
@@ -1057,7 +1058,7 @@ fn <- glue(here('outdata/CEAC50pt')) + SA + '.' + ACF + '.csv'
 fwrite(tmp,file=fn)
 
 ## ICERs by country
-pice <- PT1[,.(numPT.soc=1,
+pice <- PT1[is.finite(cost.soc),.(numPT.soc=1, #TODO remove condition
                cost.soc=mean(cost.soc),
                cost.soc.lo=lof(cost.soc),
                cost.soc.hi=hif(cost.soc),
@@ -1102,7 +1103,7 @@ vec <- vec[!vec %in% c('country','ICER')] #all but country and ICER
 pice[,(vec):=lapply(.SD, function(x) 100*x), .SDcols = vec]
 
 ## table output
-picer <- pice[,.(country=country,
+picer <- pice[is.finite(cost.soc),.(country=country,
                     numPT.soc=paste0(numPT.soc),
                     cost.soc=bracket(cost.soc,cost.soc.lo,cost.soc.hi),
                     numPT.int=bracket(numPT.int,numPT.int.lo,
@@ -1121,7 +1122,7 @@ picer
 fn <- glue(here('outdata/ICERpt')) + SA +'.' + ACF + '.csv'
 fwrite(picer,file=fn)
 
-piceage <- PT2[,.(numPT.soc=1,
+piceage <- PT2[is.finite(cost.soc),.(numPT.soc=1,
                cost.soc=mean(cost.soc),
                cost.soc.lo=lof(cost.soc),
                cost.soc.hi=hif(cost.soc),

@@ -55,12 +55,10 @@ load(file=here('data/HHCM.Rdata'))   #HHCM cascade
 load(file=here('data/BL.Rdata'))           #BL extract HIV
 load(file=here('data/INT.Rdata'))         #INT cascade data
 load(file=here('data/CET.Rdata'))         #CE thresholds
+load(file=here('data/SBEP.Rdata'))     #screening by entry point
 load(file=here('data/PD.Rdata'))           #modelling parmeters
-PZ <- parse.parmtable(PD)                     #make into parm object
+PZ <- parse.parmtable(PD)              #make into parm object
 
-## TODO move to other file
-SBEP <- fread(here('indata/screened_by_entrypoint.csv'))
-SBEP[,iso3:=c("CMR","DIV","COD","KEN","LSO","MWI","UGA","ZWE")]
 
 ## --- settings
 set.seed(1234)

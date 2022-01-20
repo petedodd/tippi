@@ -606,5 +606,38 @@ save(CET,file=here('data/CET.Rdata'))
 PD <- read.csv(here('indata/TIPPIresults - TIPPIparms.csv'))
 save(PD,file=here('data/PD.Rdata'))
 
+
+## ASM age splits file
+D <- fread(here('../dataprep/outdata/D.csv'))
+T <- fread(here('../dataprep/outdata/T.csv'))
+P <- fread(here('../dataprep/outdata/P.csv'))
+
+
+(P <- P[,.(Baseline=sum(Baseline.Num),Intervention=sum(Intervention.Num)),by=.(Country,age)])
+(D <- D[,.(Baseline=sum(Baseline.Num),Intervention=sum(Intervention.Num)),by=.(Country,age)])
+(T <- T[,.(Baseline=sum(Baseline.Num),Intervention=sum(Intervention.Num)),by=.(Country,age)])
+
+P[,qty:='pt']
+D[,qty:='dx']
+T[,qty:='tx']
+
+
+ASM <- rbindlist(list(P,D,T))
+ASM <- melt(ASM,id=c('Country','age','qty'))
+ASM <- dcast(ASM,Country + qty + variable ~ age)
+names(ASM)[c(1,3)] <- c('country','period')
+ASM[,`0-14`:=NULL]
+
+save(ASM,file=here('data/ASM.Rdata'))
+
+## screening entry-point
+SBEP <- fread(here('indata/screened_by_entrypoint.csv'))
+SBEP[,iso3:=c("CMR","DIV","COD","KEN","LSO","MWI","UGA","ZWE")]
+
+save(SBEP,file=here('data/SBEP.Rdata'))
+
+
+
+
 ## TODO questions
 ## HIV mix -- different under intervention?

@@ -111,12 +111,14 @@ txsuccess <- data.table(
     BL=unlist(INT[metric=='TxSuccesspcBL',..nmz]),
     INT=unlist(INT[metric=='TxSuccesspc',..nmz])
 )
-fwrite(txsuccess,file=here('outdata/txsuccess.csv'))
 ptsuccess <- data.table(
     country=nmz,
     BL=unlist(INT[metric=='PtcompletepcBL',..nmz]),
     INT=unlist(INT[metric=='Ptcompletepc',..nmz])
 )
+
+## write out
+fwrite(txsuccess,file=here('outdata/txsuccess.csv'))
 fwrite(ptsuccess,file=here('outdata/ptsuccess.csv'))
 
 
@@ -183,7 +185,7 @@ K[iso3=='ZWE']
 KA <- copy(K)
 KA[,cost.soc:=frac*uc.soc/ratio] #cost assuming resource use same as soc
 KA[,cost.int:=frac*(uc.soc+uc.int)] #including scale-up
-KA[iso3=='MWI']
+KA[iso3=='MWI']                     #inspect
 
 
 ## formatting and plotting
@@ -229,7 +231,6 @@ if(!shell) GP
 ggsave(GP,file=here('graphs/cost_cascade2.png'),h=6,w=9)
 ggsave(GP,file=here('graphs/cost_cascade2.pdf'),h=6,w=9)
 
-names(K)
 
 ## compute total costs & SD
 K2 <- K[,.(cost.soc=sum(frac*uc.soc/ratio),
@@ -256,9 +257,6 @@ T[,c('costt.soc','costt.int'):=.(costv.soc,costv.int*RR)]
 ## incremental cost
 T[,Dcost:=costt.int-costt.soc]
 
-names(T)
-
-
 ## HIV prevalence from BL data
 H <- BL[country %in% CK$country,.(country,hiva=hiv,Tbdx)]
 H <- H[rep(1:nrow(H),each=max(PSA$id))]
@@ -274,7 +272,6 @@ T <- merge(T,H[,.(id,iso3,age,hiv)],
            by=c('id','age','iso3'),all.x = TRUE)
 
 ## make data on average CFR change
-
 ## merge CFR data into cost/effect data
 T <- merge(T,CFRdatam,by=c('id','age')) #merge in CFR
 T <- merge(T,txsuccess,by='country')    #change in tx success kk
@@ -359,8 +356,7 @@ T2 <- T[,.(cost.soc=(costt.soc),
         by=.(country,id,age)]
 T2 <- merge(T2,CK,by='country') #country iso3 merged on
 
-
-
+## inspect
 summary(T1)
 
 ## --- CEA and CEAC plots ---
@@ -413,6 +409,7 @@ tmp[,ermin:=min(err),by=iso3]
 tmp <- tmp[err==ermin]
 tmp <- tmp[,.(iso3,ceac50=round(x))]
 tmp
+
 fn1 <- glue(here('outdata/CEAC50')) + SAT + '.csv'
 fwrite(tmp,file=fn1)
 
@@ -529,9 +526,9 @@ icers <- iceage[,.(country=country,age,
                    LY.dif=bracket(dDALY,dDALY.lo,dDALY.hi),
                    ICER = format(round(ICER),big.mark = ',')
                )]
-icers
+icers #inspect
 
-icers[age=='0-4',.(country,treated.int,ICER)]
+icers[age=='0-4',.(country,treated.int,ICER)] #inspect
 
 fn1 <- glue(here('outdata/ICERSatt')) + SAT + '.csv'
 fwrite(icers,file=fn1)
@@ -631,7 +628,7 @@ PT <- merge(PT,CDRs[,.(iso3,age,id,cdr)],by=c('iso3','age','id'))
 ## age & HIV-route splits for PT
 ## NOTE uncertainty probably not necessary due to large numbers
 ## age splits
-tmp <- INT[metric %in% c("PThhcu5pc","PTHIVentryu5pc")]
+tmp <- INT[metric %in% c("PThhcu5pc","PTHIVentryu5pc")] #TODO check
 tmp <- melt(tmp,id='metric')
 tmp <- dcast(tmp[,.(metric,country=variable,value)],
              country~metric,value='pc')
@@ -654,6 +651,7 @@ vec <- names(hago)[2:5]
 hago[,(vec):=lapply(.SD, function(x) 100*x), .SDcols = vec]
 vec <- names(hago)[2:6]
 hago[,(vec):=lapply(.SD, function(x) round(x,2)), .SDcols = vec]
+
 fwrite(hago,file=here('outdata/PTC.csv')) #save as output too
 
 
@@ -783,6 +781,11 @@ CDlong[,intu:=socu + uc.int] #NOTE intu aren't incremental now
 CDlong <- CDlong[,.(iso3,Activity,id,socu,intu)] #restrict
 CDlong <- dcast(CDlong,iso3+id~Activity,value.var=c('socu','intu'))#shape
 
+## TODO atm no unit costs for LSO; use MWI BUG
+tmp <- CDlong[iso3=='MWI']
+tmp[,iso3:='LSO']
+CDlong <- rbind(CDlong,tmp)
+
 ## merges cost data into activity data
 PT <- merge(PT,CDlong,by=c('iso3','id'),all.x=TRUE)    #costs
 
@@ -793,9 +796,6 @@ CvF <- SBEP[rep(1:nrow(SBEP),each=max(PT$id)),.(iso3,CBhhcm,FBhhcm)]
 CvF[,id:=rep(1:max(PT$id),nrow(SBEP))]
 CvF[,propFB:=rbeta(nrow(CvF),shape1=FBhhcm,shape2=CBhhcm)] #use numbers in beta dist
 PT <- merge(PT,CvF[,.(iso3,id,propFB)],by=c('iso3','id'))
-
-summary(PT) #BUG NAs?
-PT[,table(iso3,is.na(`intu_TB treatment`))] #CMR & LSO
 
 ## TODO is traceperhhcpt - is this people or households?
 ## (check same as hhci)

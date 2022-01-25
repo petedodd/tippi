@@ -39,8 +39,8 @@ edatm <- melt(edat,id.vars = c('id','quant','age'))
 edatm[,RR:=exp(value)]
 
 edat <- edatm[,.(id,quant,age,country=variable,RR)]
-save(edat,file=here('data/edat.Rdata'))
 
+save(edat,file=here('data/edat.Rdata'))
 ## load(file=here('data/edat.Rdata'))
 
 ## ===== COUNTRY KEY
@@ -241,7 +241,7 @@ load(file=here('data/ATR.Rdata')) #cascade
 
 
 ## output cascade data: costs
-CD <- fread(here('indata/unit_costs.csv'))
+CD <- fread(here('indata/unit_costs_revised_22102021.csv'))
 CD[,iso3:=gsub('DRC','COD',Country)]
 CD[,iso3:=gsub('CDI','CIV',iso3)]
 CD[,V1:=NULL]

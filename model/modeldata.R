@@ -601,7 +601,18 @@ names(INT)[names(INT)=='CDI'] <- "Cote d'Ivoire"
 save(INT,file=here('data/INT.Rdata'))
 ## CE thresholds
 CET <- fread(here('indata/TIPPIresults - CEthresholds.csv'))
-save(CET,file=here('data/CET.Rdata'))
+CET[,`1x GDP`:=as.numeric(gsub(",","",`1x GDP`))] ## format threshold data
+CET[,`3x GDP`:=as.numeric(gsub(",","",`3x GDP`))]
+CETM <- CET[,.(iso3=Country,`1x GDP`,`3x GDP`,Y1a,Y1b,Y2a,Y2b)]
+CETM <- melt(CETM,id='iso3')
+CETM[,value:=as.numeric(value)]
+CETM <- merge(CETM,CK,by='iso3')
+names(CETM)[2] <- 'threshold'
+tmp <- CETM[threshold=='1x GDP'] #add in 1/2 GDP as in Chi Vassall
+tmp[,value:=value/2]
+tmp[,threshold:='0.5x GDP']
+CETM <- rbind(CETM,tmp)
+save(CET,file=here('data/CETM.Rdata'))
 ## modelling parmeters
 PD <- read.csv(here('indata/TIPPIresults - TIPPIparms.csv'))
 save(PD,file=here('data/PD.Rdata'))

@@ -54,7 +54,7 @@ load(file=here('data/BC.Rdata')) #PT v ATT split
 load(file=here('data/HHCM.Rdata'))   #HHCM cascade
 load(file=here('data/BL.Rdata'))           #BL extract HIV
 load(file=here('data/INT.Rdata'))         #INT cascade data
-load(file=here('data/CET.Rdata'))         #CE thresholds
+load(file=here('data/CETM.Rdata'))         #CE thresholds
 load(file=here('data/SBEP.Rdata'))     #screening by entry point
 load(file=here('data/PD.Rdata'))           #modelling parmeters
 PZ <- parse.parmtable(PD)              #make into parm object
@@ -136,26 +136,11 @@ CFRdatam[,dA:=pmax(dA,dN)]
 
 
 ## HHCM cascade in aggregate: activity per index
+## jj new file
 ## NOTE aggregated over mode TODO - think about country-specific model
 HHCM <- HHCM[,.(value=sum(value)),by=.(age,activity)]
 ## make relative to index cases with HHCM
 HHCM[,value:=value/HHCM[activity=="index cases with HHCM",value]]
-
-## TODO other York thresholds
-## TODO move to data file?
-## format threshold data
-CET[,`1x GDP`:=as.numeric(gsub(",","",`1x GDP`))]
-CET[,`3x GDP`:=as.numeric(gsub(",","",`3x GDP`))]
-CETM <- CET[,.(iso3=Country,`1x GDP`,`3x GDP`,Y1a,Y1b,Y2a,Y2b)]
-CETM <- melt(CETM,id='iso3')
-CETM[,value:=as.numeric(value)]
-CETM <- merge(CETM,CK,by='iso3')
-names(CETM)[2] <- 'threshold'
-tmp <- CETM[threshold=='1x GDP'] #add in 1/2 GDP as in Chi Vassall
-tmp[,value:=value/2]
-tmp[,threshold:='0.5x GDP']
-CETM <- rbind(CETM,tmp)
-CETM
 
 ## part1
 ## ================= ATT component ============================

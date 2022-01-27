@@ -40,7 +40,7 @@ source(here('../dataprep/tippifunctions.R')) #CEAC & plotting utils
 ## these are made by modeldata.R
 load(file=here('data/edat.Rdata')) #effect data
 load(file=here('data/LYK.Rdata'))  #LYs discounted
-load(file=here('data/DBC.Rdata')) #ratios int v bl
+load(file=here('data/DBC.Rdata')) #cascade ratios int v bl
 load(file=here('data/ATR.Rdata')) #ATT cascade
 load(file=here('data/ART2.Rdata')) #ATT cascade & costs
 load(file=here('data/CDR.Rdata')) #CDR
@@ -361,9 +361,9 @@ GP <- ggplot(T1,aes(dDALY,Dcost)) +
 if(!shell) GP
 
 fn1 <- glue(here('graphs/CEall')) + SAT + '.png'
-fn2 <- glue(here('graphs/CEall')) + SAT + '.pdf'
-ggsave(GP,file=fn1,w=10,h=10); ggsave(GP,file=fn2,w=10,h=10)
-
+## fn2 <- glue(here('graphs/CEall')) + SAT + '.pdf' 
+ggsave(GP,file=fn1,w=10,h=10); ## ggsave(GP,file=fn2,w=10,h=10)
+## PDF versions too big
 
 ## make CEAC data
 lz <- seq(from = 0,to=ceactop,length.out = 1000)
@@ -382,8 +382,8 @@ if(!shell) CEAC
 
 
 fn1 <- glue(here('graphs/CEAC')) + SAT + '.png'
-fn2 <- glue(here('graphs/CEAC')) + SAT + '.pdf'
-ggsave(CEAC,file=fn1,w=7,h=7); ggsave(CEAC,file=fn2,w=7,h=7)
+## fn2 <- glue(here('graphs/CEAC')) + SAT + '.pdf'
+ggsave(CEAC,file=fn1,w=7,h=7); ## ggsave(CEAC,file=fn2,w=7,h=7)
 
 
 
@@ -552,7 +552,7 @@ GP <- ggplot(XYc,aes(value,Dcost,col=iso3)) +
 if(!shell) GP
 
 ggsave(GP,file=here('graphs/drivers_att_cost2.pdf'),h=10,w=10)
-ggsave(GP,file=here('graphs/drivers_att_cost2.png'),h=10,w=10)
+## ggsave(GP,file=here('graphs/drivers_att_cost2.png'),h=10,w=10)
 
 ## DALYs
 GP <- ggplot(XYc,aes(value,dDALY,col=iso3)) +
@@ -561,7 +561,7 @@ GP <- ggplot(XYc,aes(value,dDALY,col=iso3)) +
 if(!shell) GP
 
 ggsave(GP,file=here('graphs/drivers_att_DALY.pdf'),h=10,w=10)
-ggsave(GP,file=here('graphs/drivers_att_DALY.png'),h=10,w=10)
+## ggsave(GP,file=here('graphs/drivers_att_DALY.png'),h=10,w=10)
 
 
 
@@ -610,6 +610,7 @@ CDRs[,summary(cdr)]
 PT <- merge(PT,CDRs[,.(iso3,age,id,cdr)],by=c('iso3','age','id'))
 
 
+## TODO jj
 ## age & HIV-route splits for PT
 ## NOTE uncertainty probably not necessary due to large numbers
 ## age splits
@@ -1205,8 +1206,8 @@ if(!shell) GP
 
 ## save out
 fn1 <- glue(here('graphs/CEallALL')) + SA + '.' + ACF + '.png'
-fn2 <- glue(here('graphs/CEallALL')) + SA + '.' + ACF + '.pdf'
-ggsave(GP,file=fn1,w=10,h=10); ggsave(GP,file=fn2,w=10,h=10)
+## fn2 <- glue(here('graphs/CEallALL')) + SA + '.' + ACF + '.pdf'
+ggsave(GP,file=fn1,w=10,h=10); ## ggsave(GP,file=fn2,w=10,h=10)
 
 
 ## make CEAC data
@@ -1226,8 +1227,8 @@ if(!shell) PCEAC
 
 ## save out
 fn1 <- glue(here('graphs/CEACall')) + SA + '.' + ACF + '.png'
-fn2 <- glue(here('graphs/CEACall')) + SA + '.' + ACF + '.pdf'
-ggsave(PCEAC,file=fn1,w=10,h=10); ggsave(PCEAC,file=fn2,w=10,h=10)
+## fn2 <- glue(here('graphs/CEACall')) + SA + '.' + ACF + '.pdf'
+ggsave(PCEAC,file=fn1,w=10,h=10); ## ggsave(PCEAC,file=fn2,w=10,h=10)
 
 
 ##  combined ICERS

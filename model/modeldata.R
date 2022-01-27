@@ -612,7 +612,7 @@ tmp <- CETM[threshold=='1x GDP'] #add in 1/2 GDP as in Chi Vassall
 tmp[,value:=value/2]
 tmp[,threshold:='0.5x GDP']
 CETM <- rbind(CETM,tmp)
-save(CET,file=here('data/CETM.Rdata'))
+save(CETM,file=here('data/CETM.Rdata'))
 ## modelling parmeters
 PD <- read.csv(here('indata/TIPPIresults - TIPPIparms.csv'))
 save(PD,file=here('data/PD.Rdata'))

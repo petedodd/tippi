@@ -37,28 +37,31 @@ library(glue)
 source(here('../dataprep/tippifunctions.R')) #CEAC & plotting utils
 
 ## ===== INPUT DATA
-## these are made by modeldata.R
-load(file=here('data/edat.Rdata')) #effect data
+## many of these are made by modeldata.R
+load(file=here('data/edat.Rdata')) #effect data from inference
 load(file=here('data/LYK.Rdata'))  #LYs discounted
-load(file=here('data/DBC.Rdata')) #cascade ratios int v bl
+load(file=here('data/DBC.Rdata')) #cascade ratios for int v bl
 load(file=here('data/ATR.Rdata')) #ATT cascade
-load(file=here('data/ART2.Rdata')) #ATT cascade & costs
+load(file=here('data/ART2.Rdata')) #ATT cascade & costs NOTE 2 update w/costs
 load(file=here('data/CDR.Rdata')) #CDR
-load(file=here('data/H.Rdata')) #HIV - not so relevant
+load(file=here('data/H.Rdata')) #HIV by country from baseline data
 load(file=here('data/PTFH.Rdata')) #PT from HIV split
-load(file=here('data/PTC.Rdata')) #PT cascade
-load(file=here('data/CD.Rdata'))  #rawer cost data
-load(file=here('data/ASM.Rdata')) #age splits
-load(file=here('data/BC.Rdata')) #PT v ATT split
-## load(file=here('data/corfac.Rdata'))  #HH v ATT screen factor
-load(file=here('data/HHCM.Rdata'))   #HHCM cascade
-load(file=here('data/BL.Rdata'))           #BL extract HIV
-load(file=here('data/INT.Rdata'))         #INT cascade data
+load(file=here('data/PTC.Rdata')) #PT cascade: HH screened per PT init
+load(file=here('data/CD.Rdata'))  #rawer cost data (made from csv if modeldata.R)
+load(file=here('data/ASM.Rdata')) #age splits from pre/post data
+load(file=here('data/BC.Rdata')) #PT v ATT split from pre/post data
+load(file=here('data/HHCM.Rdata'))#HHCM cascade screen:presume:dx x FB/CB
+load(file=here('data/BL.Rdata'))#BL data: tbdx, hiv, prtb, Xpert, pt, pthiv
+load(file=here('data/INT.Rdata')) #INT cascade data from spreadsheet
 load(file=here('data/CETM.Rdata'))         #CE thresholds
-load(file=here('data/SBEP.Rdata'))     #screening by entry point
+load(file=here('data/SBEP.Rdata')) #screening by entry point (new) (FB/CB HHCM vs HIV+/- ICF by country)
 load(file=here('data/PD.Rdata'))           #modelling parmeters
 PZ <- parse.parmtable(PD)              #make into parm object
 
+## TODO
+## to check roles of:
+## PTFH, SBEP, BL, HHCM
+## and annotate/differentiate better
 
 ## --- settings
 set.seed(1234)
@@ -136,7 +139,6 @@ CFRdatam[,dA:=pmax(dA,dN)]
 
 
 ## HHCM cascade in aggregate: activity per index
-## jj new file
 ## NOTE aggregated over mode TODO - think about country-specific model
 HHCM <- HHCM[,.(value=sum(value)),by=.(age,activity)]
 ## make relative to index cases with HHCM
@@ -306,7 +308,7 @@ names(T)[names(T)=='Baseline'] <- 'frac'
 names(T)[names(T)=='Intervention'] <- 'fracI'
 
 ## TODO make sure that case-finding here does not include HHCM ACF
-## TODO HIV vs non-HIV entrypoint
+## TODO HIV vs non-HIV entrypoint NOTE this needs doing in modeldata.R - use SBEP in creating ART2.Rdata (better name?)
 ## merge in life-expectancy & calculate DALY changes
 T <- merge(T,LYK[,.(iso3,age,LYS,LYS0)],by=c('iso3','age'),all.x=TRUE)
 T[,c('dDALY','dDALY0','dDALY.nohiv'):=.(LYS*LS,LYS0*LS,LYS*LS.hiv0)]
@@ -610,7 +612,6 @@ CDRs[,summary(cdr)]
 PT <- merge(PT,CDRs[,.(iso3,age,id,cdr)],by=c('iso3','age','id'))
 
 
-## TODO jj
 ## age & HIV-route splits for PT
 ## NOTE uncertainty probably not necessary due to large numbers
 ## age splits
@@ -619,6 +620,7 @@ tmp <- melt(tmp,id='metric')
 tmp <- dcast(tmp[,.(metric,country=variable,value)],
              country~metric,value='pc')
 tmp <- tmp[country %in% CK$country]
+## TODO check PTFH vs SBEP (think OK - latter about screening)
 hag <- merge(tmp,PTFH[,.(country,ptinhiv)],by='country') #both splits
 hag[,heu5:=ptinhiv*PTHIVentryu5pc];hag[,heo5:=ptinhiv*(1-PTHIVentryu5pc)]
 hag[,hcu5:=(1-ptinhiv)*PThhcu5pc];hag[,hco5:=(1-ptinhiv)*(1-PThhcu5pc)]
@@ -645,7 +647,7 @@ fwrite(hago,file=here('outdata/PTC.csv')) #save as output too
 PT <- merge(PT,hag,by=c('country','age'),all.x = TRUE)
 ## NOTE this is normalized over route x age - age-stratified results will need renorm'n:
 PT[,ptentry:=hentry+hhc]  #denominator for age-stratified calx
-## TODO check hhc
+
 
 ## ARI assumption for risks in HIV entry-point cohort
 PT <- merge(PT,PSA[,.(id,ari)],by='id',all.x=TRUE)
@@ -686,12 +688,12 @@ PT <- merge(PT,ptsuccess,by='country')
 
 ## cases
 ## 0 here
-## TODO check correct RR applied
+## TODO check correct RR applied for PT
 ## PT[,casesPT.hiv:=casesnoPT.hiv*iptRRhivpos]
 ## PT[,casesPT.nohiv:=casesnoPT.nohiv*iptRRtstpos]
 
 ## possibly account for changes in incomplete treatment
-PT[,c('fs','fi'):=1.0] #proportion completing TODO check
+PT[,c('fs','fi'):=1.0] #proportion completing
 if(SA=='txd'){ #sensitivity analysis around completion
     PT[,c('fs','fi'):=.(BL,INT)]
 }
@@ -767,7 +769,7 @@ CDlong[,intu:=socu + uc.int] #NOTE intu aren't incremental now
 CDlong <- CDlong[,.(iso3,Activity,id,socu,intu)] #restrict
 CDlong <- dcast(CDlong,iso3+id~Activity,value.var=c('socu','intu'))#shape
 
-## TODO atm no unit costs for LSO; use MWI BUG
+## TODO atm no unit costs for LSO
 tmp <- CDlong[iso3=='MWI']
 tmp[,iso3:='LSO']
 CDlong <- rbind(CDlong,tmp)
@@ -776,23 +778,22 @@ CDlong <- rbind(CDlong,tmp)
 PT <- merge(PT,CDlong,by=c('iso3','id'),all.x=TRUE)    #costs
 
 ## the split between facility-based vs community-based HH screening
-## TODO is this the same under soc/int?
+## NOTE is this the same under soc/int? presume mainly int
 SBEP[,.(iso3,CBhhcm,FBhhcm)] # raw numbers
 CvF <- SBEP[rep(1:nrow(SBEP),each=max(PT$id)),.(iso3,CBhhcm,FBhhcm)]
 CvF[,id:=rep(1:max(PT$id),nrow(SBEP))]
 CvF[,propFB:=rbeta(nrow(CvF),shape1=FBhhcm,shape2=CBhhcm)] #use numbers in beta dist
 PT <- merge(PT,CvF[,.(iso3,id,propFB)],by=c('iso3','id'))
 
-## TODO is traceperhhcpt - is this people or households?
+## traceperhhcpt - is households screened per PT init
 ## (check same as hhci)
-## jk TODO see below totindexscreen?
+## TODO check unit costs are per HH
 PT[,costPT.soc:=
       (1-propFB)*traceperhhcpt*`socu_Community hhci`+   #comm CT
       (propFB)*traceperhhcpt*`socu_Facility hhci`+      #facility CT
       `socu_TPT treatment`                              #TPT
    ]
 
-## TODO are these incrememental? traceperhhcpt
 PT[,costPT.int:=
       (1-propFB)*traceperhhcpt*`intu_Community hhci`+   #comm CT
       (propFB)*traceperhhcpt*`intu_Facility hhci`+      #facility CT
@@ -848,11 +849,11 @@ PT[,c('deathsPrev.soc','deathsPrev.int'):=.(sum(deathsPrev.soc),
 ## check names
 grep('socu',names(PT),value=TRUE)
 
-## TODO check logic
+## TODO check logic (not yet done)
 ## cost (not including thct)
 names(PT)
 
-## jj
+
 ## --- costs for ACF component
 ## NOTE
 ## TODO align the attached to correct overall thru-flo

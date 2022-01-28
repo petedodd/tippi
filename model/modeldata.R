@@ -91,6 +91,12 @@ if(TRUE){## if(!file.exists(fn)){
 
 
 ## ===== CASCADE DATA
+
+## screening by entry-point
+SBEP <- fread(here('indata/screened_by_entrypoint.csv'))
+SBEP[,iso3:=c("CMR","DIV","COD","KEN","LSO","MWI","UGA","ZWE")]
+save(SBEP,file=here('data/SBEP.Rdata'))
+
 ## blextract1.csv  blextract2.csv  resoure.int.csv
 ## baseline cascade data TODO from report
 ## bl extract 1:
@@ -110,6 +116,7 @@ str(RI)
 ## correctype <- function(x) if(is.character(x[1])){ as.numeric(gsub(",","",x))} else {x}
 ## rnmz <- names(RI)[c(-1)]
 ## RI[,(rnmz) := lapply(.SD,correctype),.SDcols=rnmz] #remove "," and convert char to num
+
 
 ## melted inverention cascade data
 names(RI)[names(RI)=='CDI'] <- "Cote d'Ivoire"
@@ -137,15 +144,6 @@ attv <- c("Screened for symptoms","Presumptive TB identified",
 attvn <- c("bacpos","bacposu5","bacposu5pc","TxDenom","TxSuccess",
            "TxSuccesspc")
 otherv <- c("CXRamongclindx")
-
-## TODO needs removing?
-## NOTE correction factor
-## ratio of screening to index cases
-corfac <- RIM[metric %in% c(ptv[1],attv[1])]
-corfac <- dcast(corfac,country ~ metric,value.var = 'value')
-corfac[,scale:=`Screened for symptoms` / `Number of Index cases with contact tracing done`]
-corfac <- corfac[country %in% cns,.(country,scale)]
-save(corfac,file=here('data/corfac.Rdata'))
 
 ## restrict to particular intervention (ie ATT or TPT focussed)
 PTT <- RIM[metric %in% ptv]
@@ -248,9 +246,6 @@ CD[,V1:=NULL]
 save(CD,file=here('data/CD.Rdata')) #cascade
 
 load(file=here('data/CD.Rdata')) #cascade TODO update from here
-
-
-
 ## mapping costs to activities
 CD[,metric:=Activity]
 CD[,unique(Activity)]
@@ -276,10 +271,11 @@ CD[Activity=="Xpert testing",.(Country,uc.soc,uc.soc.sd,uc.int)] #check
 CD[Activity=='Presumptive TB evaluation',
    metric:="Presumptive TB identified"] #NM
 
-## [1] "Community hhci"              "Facility hhci"
-## [3] "Screening in HIV clinic"     "Screening in non-HIV clinic"
 
 ## TODO need to split out HIV component?
+## TODO using SBEP from above
+## [1] "Community hhci"              "Facility hhci"
+## [3] "Screening in HIV clinic"     "Screening in non-HIV clinic"
 CD[Activity=="Screening in non-HIV clinic",
    metric:="Screened for symptoms"] #NM
 
@@ -665,12 +661,6 @@ save(ASM,file=here('data/ASM.Rdata'))
 
 
 
-
-## screening entry-point
-SBEP <- fread(here('indata/screened_by_entrypoint.csv'))
-SBEP[,iso3:=c("CMR","DIV","COD","KEN","LSO","MWI","UGA","ZWE")]
-
-save(SBEP,file=here('data/SBEP.Rdata'))
 
 
 

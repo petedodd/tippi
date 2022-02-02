@@ -239,7 +239,7 @@ load(file=here('data/ATR.Rdata')) #cascade
 
 
 ## output cascade data: costs
-CD <- fread(here('indata/unit_costs_revised_22102021.csv'))
+CD <- fread(here('indata/unit_costs_updated_2022-01-26.csv')) #unit_costs_revised_22102021.csv
 CD[,iso3:=gsub('DRC','COD',Country)]
 CD[,iso3:=gsub('CDI','CIV',iso3)]
 CD[,V1:=NULL]
@@ -311,7 +311,7 @@ load(file=here('data/ART2.Rdata')) #cascade + costs
 
 ## ==================== baseline data ===========
 B1
-B2
+B2 #TODO this is aggregated over country?
 
 ## --- compare cascade
 ## baseline
@@ -351,7 +351,7 @@ ggplot(DBR,aes(metric,frac,col=country,group=paste(period,country),
     theme_classic() + ggpubr::grids()+
     theme(axis.text.x = element_text(angle = 45, vjust = 1.0, hjust=1))
 
-ggsave(filename=here('graphs/cascade_compare.pdf'),w=7,h=8)
+## ggsave(filename=here('graphs/cascade_compare.pdf'),w=7,h=8)
 ggsave(filename=here('graphs/cascade_compare.png'),w=7,h=8)
 
 
@@ -364,7 +364,7 @@ ggplot(DBR,aes(period,frac,col=country,lty=metric,
     ylab('Number per child diagnosed with TB') + xlab('Period')## +
     ## theme_classic() + ggpubr::grids()
 
-ggsave(filename=here('graphs/cascade_compare2.pdf'),w=8,h=5)
+## ggsave(filename=here('graphs/cascade_compare2.pdf'),w=8,h=5)
 ggsave(filename=here('graphs/cascade_compare2.png'),w=8,h=5)
 
 DBR

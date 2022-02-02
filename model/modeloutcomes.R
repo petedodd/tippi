@@ -200,7 +200,7 @@ GP <- ggplot(KAM,aes(iso3,value,fill=metric)) +
 if(!shell) GP
 
 ggsave(GP,file=here('graphs/cost_cascade.png'),h=6,w=10)
-ggsave(GP,file=here('graphs/cost_cascade.pdf'),h=6,w=10)
+## ggsave(GP,file=here('graphs/cost_cascade.pdf'),h=6,w=10)
 
 
 GP <- ggplot(KAM[variable=='Intervention'],
@@ -216,7 +216,7 @@ if(!shell) GP
 
 
 ggsave(GP,file=here('graphs/cost_cascade2.png'),h=6,w=9)
-ggsave(GP,file=here('graphs/cost_cascade2.pdf'),h=6,w=9)
+## ggsave(GP,file=here('graphs/cost_cascade2.pdf'),h=6,w=9)
 
 
 ## compute total costs & SD
@@ -553,8 +553,8 @@ GP <- ggplot(XYc,aes(value,Dcost,col=iso3)) +
   facet_wrap(~variable,scales = 'free')
 if(!shell) GP
 
-ggsave(GP,file=here('graphs/drivers_att_cost2.pdf'),h=10,w=10)
-## ggsave(GP,file=here('graphs/drivers_att_cost2.png'),h=10,w=10)
+ggsave(GP,file=here('graphs/drivers_att_cost2.png'),h=10,w=10)
+## ggsave(GP,file=here('graphs/drivers_att_cost2.pdf'),h=10,w=10)
 
 ## DALYs
 GP <- ggplot(XYc,aes(value,dDALY,col=iso3)) +
@@ -562,8 +562,8 @@ GP <- ggplot(XYc,aes(value,dDALY,col=iso3)) +
   facet_wrap(~variable,scales = 'free')
 if(!shell) GP
 
-ggsave(GP,file=here('graphs/drivers_att_DALY.pdf'),h=10,w=10)
-## ggsave(GP,file=here('graphs/drivers_att_DALY.png'),h=10,w=10)
+ggsave(GP,file=here('graphs/drivers_att_DALY.png'),h=10,w=10)
+## ggsave(GP,file=here('graphs/drivers_att_DALY.pdf'),h=10,w=10)
 
 
 
@@ -1009,8 +1009,8 @@ if(!shell) GP
 
 ## save out
 fn1 <- glue(here('graphs/CEallPT')) + SA + '.' + ACF + '.png'
-fn2 <- glue(here('graphs/CEallPT')) + SA + '.' + ACF + '.pdf'
-ggsave(GP,file=fn1,w=10,h=10); ggsave(GP,file=fn2,w=10,h=10)
+## fn2 <- glue(here('graphs/CEallPT')) + SA + '.' + ACF + '.pdf'
+ggsave(GP,file=fn1,w=10,h=10); ## ggsave(GP,file=fn2,w=10,h=10)
 
 
 ## make CEAC data
@@ -1030,8 +1030,8 @@ if(!shell) PCEAC
 
 ## save out
 fn1 <- glue(here('graphs/CEACpt')) + SA + '.' + ACF + '.png'
-fn2 <- glue(here('graphs/CEACpt')) + SA + '.' + ACF + '.pdf'
-ggsave(PCEAC,file=fn1,w=10,h=10); ggsave(PCEAC,file=fn2,w=10,h=10)
+## fn2 <- glue(here('graphs/CEACpt')) + SA + '.' + ACF + '.pdf'
+ggsave(PCEAC,file=fn1,w=10,h=10); ## ggsave(PCEAC,file=fn2,w=10,h=10)
 
 
 ## output where things X 50%

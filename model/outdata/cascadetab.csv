@@ -1,9 +1,9 @@
-iso3,Screened for symptoms,Presumptive TB identified,Presumptive TB tested on Xpert,Diagnosed with TB,TB treatment,cost,iso3,Screened for symptoms,Presumptive TB identified,Presumptive TB tested on Xpert,Diagnosed with TB,TB treatment,cost
-CIV,363.32,2.27,1.44,1.05,1,142 (49),CIV,363.32,4.69,4.07,1.05,1,1064 (69)
-CMR,,,,1.01,,0 (0),CMR,,,,1.01,,0 (0)
-COD,65.82,0.97,0.42,1.03,1,92 (37),COD,65.82,2.01,1.18,1.03,1,374 (41)
-KEN,431.84,3.46,1.58,1.01,1,160 (52),KEN,431.84,5.9,3.43,1.01,1,816 (66)
-LSO,,,,1.01,,0 (0),LSO,,,,1.01,,0 (0)
-MWI,817.98,3.17,0.85,1.03,1,97 (36),MWI,817.98,6.67,1.38,1.03,1,715 (38)
-UGA,244.38,5.89,4.19,1.01,1,193 (61),UGA,244.38,6.75,4.09,1.01,1,980 (60)
-ZWE,569.05,2.82,1.21,1.01,1,145 (49),ZWE,569.05,9.52,7.9,1.01,1,3597 (133)
+iso3,Screened for symptoms,Presumptive TB identified,Presumptive TB tested on Xpert,Diagnosed with TB,TB treatment,cost,Screened for symptoms,Presumptive TB identified,Presumptive TB tested on Xpert,Diagnosed with TB,TB treatment,cost
+CIV,363.32,2.27,1.44,1.05,1,1421 (550),363.32,4.69,4.07,1.05,1,2386 (552)
+CMR,512.8,4.89,3.34,1.01,1,2810 (1134),512.8,10.11,9.47,1.01,1,4636 (1140)
+COD,65.82,0.97,0.42,1.03,1,193 (55),65.82,2.01,1.18,1.03,1,348 (58)
+KEN,431.84,3.46,1.58,1.01,1,1943 (775),431.84,5.9,3.43,1.01,1,2775 (776)
+LSO,,,,1.01,,0 (0),,,,1.01,,0 (0)
+MWI,817.98,3.17,0.85,1.03,1,1030 (371),817.98,6.67,1.38,1.03,1,1788 (372)
+UGA,244.38,5.89,4.19,1.01,1,686 (212),244.38,6.75,4.09,1.01,1,1474 (212)
+ZWE,569.05,2.82,1.21,1.01,1,2097 (836),569.05,9.52,7.9,1.01,1,4355 (845)

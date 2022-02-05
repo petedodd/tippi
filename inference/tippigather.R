@@ -26,9 +26,13 @@ ggarrange(plotlist = grphs,
           labels = paste0(letters[1:6],")"),
           common.legend = TRUE,legend='top')
 
-ggsave(filename=here("graphs/MAll.pdf"),w=10,h=12)
+ggsave(filename=here("graphs/MAll.eps"),w=10,h=12)
 ggsave(filename=here("graphs/MAll.png"),w=10,h=12)
 
+## TODO
+## additional titles on graphs
+## log scale
+## text on graphs
 
 
 ## gather summaries for reporting
@@ -43,7 +47,7 @@ TALL <- rbindlist(list(
     T3[country=='SUMMARY',.(`50%`,`2.5%`,`97.5%`)]
 ))
 
-fwrite(TALL,file=here('outdata/txALL.csv'))
+fwrite(format(TALL,digits=3,nsmall=3),file=here('outdata/txALL.csv'))
 
 ## px
 P1 <- fread(here('outdata/pxMC04.csv'))
@@ -56,4 +60,4 @@ PALL <- rbindlist(list(
     P3[country=='SUMMARY',.(`50%`,`2.5%`,`97.5%`)]
 ))
 
-fwrite(PALL,file=here('outdata/pxALL.csv'))
+fwrite(format(PALL,digits=3,nsmall=3),file=here('outdata/pxALL.csv'))

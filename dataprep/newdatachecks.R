@@ -121,19 +121,19 @@ D014 <- D014[!Facility %in% dtdrop]
 DM04 <- dataprep(D04)
 DIP <- intplot(DM04)
 ggsave(DIP,file=here('graphs/D04.pdf'),h=8.5,w=7.5)
-ggsave(DIP,file=here('graphs/D04.png'),h=8.5,w=7.5)
+## ggsave(DIP,file=here('graphs/D04.png'),h=8.5,w=7.5)
 
 ## 5-14
 DM514 <- dataprep(D514)
 DIP <- intplot(DM514)
 ggsave(DIP,file=here('graphs/D514.pdf'),h=8.5,w=7.5)
-ggsave(DIP,file=here('graphs/D514.png'),h=8.5,w=7.5)
+## ggsave(DIP,file=here('graphs/D514.png'),h=8.5,w=7.5)
 
 ## 0-14
 DM014 <- dataprep(D014)
 DIP <- intplot(DM014)
 ggsave(DIP,file=here('graphs/D014.pdf'),h=8.5,w=7.5)
-ggsave(DIP,file=here('graphs/D014.png'),h=8.5,w=7.5)
+## ggsave(DIP,file=here('graphs/D014.png'),h=8.5,w=7.5)
 
 
 ## ================= tx init ==================
@@ -257,19 +257,19 @@ T014 <- T014[!Facility %in% dtdrop]
 TM04 <- dataprep(T04)
 TIP <- intplot(TM04)
 ggsave(TIP,file=here('graphs/T04.pdf'),h=8.5,w=7.5)
-ggsave(TIP,file=here('graphs/T04.png'),h=8.5,w=7.5)
+## ggsave(TIP,file=here('graphs/T04.png'),h=8.5,w=7.5)
 
 ## 5-14
 TM514 <- dataprep(T514)
 TIP <- intplot(TM514)
 ggsave(TIP,file=here('graphs/T514.pdf'),h=8.5,w=7.5)
-ggsave(TIP,file=here('graphs/T514.png'),h=8.5,w=7.5)
+## ggsave(TIP,file=here('graphs/T514.png'),h=8.5,w=7.5)
 
 ## 0-14
 TM014 <- dataprep(T014)
 TIP <- intplot(TM014)
 ggsave(TIP,file=here('graphs/T014.pdf'),h=8.5,w=7.5)
-ggsave(TIP,file=here('graphs/T014.png'),h=8.5,w=7.5)
+## ggsave(TIP,file=here('graphs/T014.png'),h=8.5,w=7.5)
 
 ## ================= pt init ==================
 
@@ -380,19 +380,19 @@ P014 <- P014[!Facility %in% ptdrop]
 PM04 <- dataprep(P04)
 PIP <- intplot(PM04)
 ggsave(PIP,file=here('graphs/P04.pdf'),h=8.5,w=7.5)
-ggsave(PIP,file=here('graphs/P04.png'),h=8.5,w=7.5)
+## ggsave(PIP,file=here('graphs/P04.png'),h=8.5,w=7.5)
 
 ## 5-14
 PM514 <- dataprep(P514)
 PIP <- intplot(PM514)
 ggsave(PIP,file=here('graphs/P514.pdf'),h=8.5,w=7.5)
-ggsave(PIP,file=here('graphs/P514.png'),h=8.5,w=7.5)
+## ggsave(PIP,file=here('graphs/P514.png'),h=8.5,w=7.5)
 
 ## 0-14
 PM014 <- dataprep(P014)
 PIP <- intplot(PM014)
 ggsave(PIP,file=here('graphs/P014.pdf'),h=8.5,w=7.5)
-ggsave(PIP,file=here('graphs/P014.png'),h=8.5,w=7.5)
+## ggsave(PIP,file=here('graphs/P014.png'),h=8.5,w=7.5)
 
 ## ==== join and write out ============
 ## --- dx

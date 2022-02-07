@@ -1,5 +1,7 @@
 library(here)
 
+LP <- glue(scan(here('graphs/petelocalpath.txt'),what="string"))
+
 ## clinics to drop for reasons of non comparability
 dtdrop <- c("Beatrice Road Infectious Disease Hospital (BRIDH)",
             "Dulibadzimu Clinic","Hopley Clinic","Kuwadzana Polyclinic",
@@ -15,7 +17,7 @@ source(here('tippifunctions.R'))
 ## ================= dx init ==================
 
 ## CMR
-fn <- here("../../newdata/cameroon/TB Diagnosed up to 31Dec2020_Cam.xlsx")
+fn <- LP+"cameroon/TB Diagnosed up to 31Dec2020_Cam.xlsx"
 ## dx014
 D014cmr <- rexel(fn,sheet=1,skip = 1)
 ## dx04
@@ -24,7 +26,7 @@ D04cmr <- rexel(fn,sheet=2,skip = 1)
 D514cmr <- rexel(fn,sheet=3,skip = 1)
 
 ## KEN
-fn <- here("../../newdata/kenya/TB Diagnosed up to 31Dec2020_Ken.xlsx")
+fn <- LP+"kenya/TB Diagnosed up to 31Dec2020_Ken.xlsx"
 ## dx014
 D014ken <- rexel(fn,sheet=1,skip = 1)
 ## dx04
@@ -33,7 +35,7 @@ D04ken <- rexel(fn,sheet=2,skip = 1)
 D514ken <- rexel(fn,sheet=3,skip = 1)
 
 ## LSO
-fn <- here("../../newdata/lesotho/TB Diagnosed up to 31Dec2020_Les.xlsx")
+fn <- LP+"lesotho/TB Diagnosed up to 31Dec2020_Les.xlsx"
 ## dx014
 D014lso <- rexel(fn,sheet=1,skip = 1)
 ## dx04
@@ -42,7 +44,7 @@ D04lso <- rexel(fn,sheet=2,skip = 1)
 D514lso <- rexel(fn,sheet=3,skip = 1)
 
 ## DRC
-fn <- here("../../newdata/malawianddrcdata/TB Diagnosed up to 31Dec2020_DRC.xlsx")
+fn <- LP+"malawianddrcdata/TB Diagnosed up to 31Dec2020_DRC.xlsx"
 ## dx014
 D014drc <- rexel(fn,sheet=1,skip = 1)
 ## dx04
@@ -51,7 +53,7 @@ D04drc <- rexel(fn,sheet=2,skip = 1)
 D514drc <- rexel(fn,sheet=3,skip = 1)
 
 ## MWI
-fn <- here("../../newdata/malawianddrcdata/TB Diagnosed up to 31Dec2020_Malawi.xlsx")
+fn <- LP+"malawianddrcdata/TB Diagnosed up to 31Dec2020_Malawi.xlsx"
 ## dx014
 D014mwi <- rexel(fn,sheet=1,skip = 1)
 ## dx04
@@ -60,7 +62,7 @@ D04mwi <- rexel(fn,sheet=2,skip = 1)
 D514mwi <- rexel(fn,sheet=3,skip = 1)
 
 ## CIV
-fn <- here("../../newdata/malawianddrcdata/TB Diagnosed up to 31Dec2020_CDI.xlsx")
+fn <- LP+"malawianddrcdata/TB Diagnosed up to 31Dec2020_CDI.xlsx"
 ## dx014
 D014civ <- rexel(fn,sheet=1,skip = 1)
 ## dx04
@@ -69,7 +71,7 @@ D04civ <- rexel(fn,sheet=2,skip = 1)
 D514civ <- rexel(fn,sheet=3,skip = 1)
 
 ## UGA
-fn <- here("../../newdata/malawianddrcdata/TB Diagnosed up to 31Dec2020_Ug.xlsx")
+fn <- LP+"malawianddrcdata/TB Diagnosed up to 31Dec2020_Ug.xlsx"
 ## dx014
 D014uga <- rexel(fn,sheet=1,skip = 1)
 ## dx04
@@ -78,7 +80,7 @@ D04uga <- rexel(fn,sheet=2,skip = 1)
 D514uga <- rexel(fn,sheet=3,skip = 1)
 
 ## ZWE
-fn <- here("../../newdata/malawianddrcdata/TB Diagnosed up to 31Dec2020_Zim.xlsx")
+fn <- LP+"malawianddrcdata/TB Diagnosed up to 31Dec2020_Zim.xlsx"
 ## dx014
 D014zwe <- rexel(fn,sheet=1,skip = 1)
 ## dx04
@@ -139,7 +141,7 @@ ggsave(DIP,file=here('graphs/D014.pdf'),h=8.5,w=7.5)
 ## ================= tx init ==================
 
 ## CMR
-fn <- here("../../newdata/cameroon/TB Treatment up to 31Dec2020_Cam.xlsx")
+fn <- LP+"cameroon/TB Treatment up to 31Dec2020_Cam.xlsx"
 ## dx014
 T014cmr <- rexel(fn,sheet=1,skip = 1)
 ## dx04
@@ -148,7 +150,7 @@ T04cmr <- rexel(fn,sheet=2,skip = 1)
 T514cmr <- rexel(fn,sheet=3,skip = 1)
 
 ## KEN
-fn <- here("../../newdata/kenya/TB Treatment up to 31Dec2020_Ken.xlsx")
+fn <- LP+"kenya/TB Treatment up to 31Dec2020_Ken.xlsx"
 ## dx014
 T014ken <- rexel(fn,sheet=1,skip = 1)
 ## dx04
@@ -157,7 +159,7 @@ T04ken <- rexel(fn,sheet=2,skip = 1)
 T514ken <- rexel(fn,sheet=3,skip = 1)
 
 ## LSO
-fn <- here("../../newdata/lesotho/TB Treatment up to 31Dec2020_Les.xlsx")
+fn <- LP+"lesotho/TB Treatment up to 31Dec2020_Les.xlsx"
 ## dx014
 T014lso <- rexel(fn,sheet=1,skip = 1)
 ## dx04
@@ -166,7 +168,7 @@ T04lso <- rexel(fn,sheet=2,skip = 1)
 T514lso <- rexel(fn,sheet=3,skip = 1)
 
 ## DRC
-fn <- here("../../newdata/malawianddrcdata/TB Treatment up to 31Dec2020_DRC.xlsx")
+fn <- LP+"malawianddrcdata/TB Treatment up to 31Dec2020_DRC.xlsx"
 ## tx014
 T014drc <- rexel(fn,sheet=1,skip = 1)
 ## tx04
@@ -175,7 +177,7 @@ T04drc <- rexel(fn,sheet=2,skip = 1)
 T514drc <- rexel(fn,sheet=3,skip = 1)
 
 ## MWI
-fn <- here("../../newdata/malawianddrcdata/TB Treatment up to 31Dec2020_Malawi.xlsx")
+fn <- LP+"malawianddrcdata/TB Treatment up to 31Dec2020_Malawi.xlsx"
 ## tx014
 T014mwi <- rexel(fn,sheet=1,skip = 1)
 ## tx04
@@ -184,7 +186,7 @@ T04mwi <- rexel(fn,sheet=2,skip = 1)
 T514mwi <- rexel(fn,sheet=3,skip = 1)
 
 ## CIV
-fn <- here("../../newdata/malawianddrcdata/TB Treatment up to 31Dec2020_CDI.xlsx")
+fn <- LP+"malawianddrcdata/TB Treatment up to 31Dec2020_CDI.xlsx"
 ## dx014
 T014civ <- rexel(fn,sheet=1,skip = 1)
 ## dx04
@@ -193,7 +195,7 @@ T04civ <- rexel(fn,sheet=2,skip = 1)
 T514civ <- rexel(fn,sheet=3,skip = 1)
 
 ## UGA
-fn <- here("../../newdata/malawianddrcdata/TB Treatment up to 31Dec2020_Ug.xlsx")
+fn <- LP+"malawianddrcdata/TB Treatment up to 31Dec2020_Ug.xlsx"
 ## dx014
 T014uga <- rexel(fn,sheet=1,skip = 1)
 ## dx04
@@ -202,7 +204,7 @@ T04uga <- rexel(fn,sheet=2,skip = 1)
 T514uga <- rexel(fn,sheet=3,skip = 1)
 
 ## ZWE
-fn <- here("../../newdata/malawianddrcdata/TB Treatment up to 31Dec2020_Zim.xlsx")
+fn <- LP+"malawianddrcdata/TB Treatment up to 31Dec2020_Zim.xlsx"
 ## dx014
 T014zwe <- rexel(fn,sheet=1,skip = 1)
 ## dx04
@@ -274,7 +276,7 @@ ggsave(TIP,file=here('graphs/T014.pdf'),h=8.5,w=7.5)
 ## ================= pt init ==================
 
 ## CMR
-fn <- here("../../newdata/cameroon/TPT initations up to 31Dec2020_Cam.xlsx")
+fn <- LP+"cameroon/TPT initations up to 31Dec2020_Cam.xlsx"
 ## dx014
 P014cmr <- rexel(fn,sheet=1,skip = 1)
 ## dx04
@@ -283,7 +285,7 @@ P04cmr <- rexel(fn,sheet=2,skip = 1)
 P514cmr <- rexel(fn,sheet=3,skip = 1)
 
 ## KEN
-fn <- here("../../newdata/kenya/TPT initations up to 31Dec2020_Ken.xlsx")
+fn <- LP+"kenya/TPT initations up to 31Dec2020_Ken.xlsx"
 ## dx014
 P014ken <- rexel(fn,sheet=1,skip = 1)
 ## dx04
@@ -292,7 +294,7 @@ P04ken <- rexel(fn,sheet=2,skip = 1)
 P514ken <- rexel(fn,sheet=3,skip = 1)
 
 ## LSO
-fn <- here("../../newdata/lesotho/TPT initations up to 31Dec2020_Les.xlsx")
+fn <- LP+"lesotho/TPT initations up to 31Dec2020_Les.xlsx"
 ## dx014
 P014lso <- rexel(fn,sheet=1,skip = 1)
 ## dx04
@@ -301,7 +303,7 @@ P04lso <- rexel(fn,sheet=2,skip = 1)
 P514lso <- rexel(fn,sheet=3,skip = 1)
 
 ## DRC
-fn <- here("../../newdata/malawianddrcdata/TPT initations up to 31Dec2020_DRC.xlsx")
+fn <- LP+"malawianddrcdata/TPT initations up to 31Dec2020_DRC.xlsx"
 ## tx014
 P014drc <- rexel(fn,sheet=1,skip = 1)
 ## tx04
@@ -310,7 +312,7 @@ P04drc <- rexel(fn,sheet=2,skip = 1)
 P514drc <- rexel(fn,sheet=3,skip = 1)
 
 ## MWI
-fn <- here("../../newdata/malawianddrcdata/TPT initations up to 31Dec2020_Malawi.xlsx")
+fn <- LP+"malawianddrcdata/TPT initations up to 31Dec2020_Malawi.xlsx"
 ## tx014
 P014mwi <- rexel(fn,sheet=1,skip = 1)
 ## tx04
@@ -319,7 +321,7 @@ P04mwi <- rexel(fn,sheet=2,skip = 1)
 P514mwi <- rexel(fn,sheet=3,skip = 1)
 
 ## CIV
-fn <- here("../../newdata/malawianddrcdata/TPT initations up to 31Dec2020_CDI.xlsx")
+fn <- LP+"malawianddrcdata/TPT initations up to 31Dec2020_CDI.xlsx"
 ## dx014
 P014civ <- rexel(fn,sheet=1,skip = 1)
 ## dx04
@@ -328,7 +330,7 @@ P04civ <- rexel(fn,sheet=2,skip = 1)
 P514civ <- rexel(fn,sheet=3,skip = 1)
 
 ## UGA
-fn <- here("../../newdata/malawianddrcdata/TPT initations up to 31Dec2020_Ug.xlsx")
+fn <- LP+"malawianddrcdata/TPT initations up to 31Dec2020_Ug.xlsx"
 ## dx014
 P014uga <- rexel(fn,sheet=1,skip = 1)
 ## dx04
@@ -337,7 +339,7 @@ P04uga <- rexel(fn,sheet=2,skip = 1)
 P514uga <- rexel(fn,sheet=3,skip = 1)
 
 ## ZWE
-fn <- here("../../newdata/malawianddrcdata/TPT initations up to 31Dec2020_Zim.xlsx")
+fn <- LP+"malawianddrcdata/TPT initations up to 31Dec2020_Zim.xlsx"
 ## dx014
 P014zwe <- rexel(fn,sheet=1,skip = 1)
 ## dx04

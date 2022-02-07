@@ -1,11 +1,11 @@
 .DS_Store
 .Rhistory
 inference/stan/*.rds
-dataprep/graphs/*.pdf
+# dataprep/graphs/*.pdf
 dataprep/graphs/*.png
 inference/graphs/*.pdf
 inference/graphs/*.png
 model/graphs/*.pdf
 model/graphs/*.png
 Rplots.pdf
-dataprep/graphs/petelocalpath.txt               #path only relevant to Pete's machine
+dataprep/graphs/*.txt               #path only relevant to Pete's machine

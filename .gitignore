@@ -8,3 +8,4 @@ inference/graphs/*.png
 model/graphs/*.pdf
 model/graphs/*.png
 Rplots.pdf
+dataprep/graphs/petelocalpath.txt               #path only relevant to Pete's machine

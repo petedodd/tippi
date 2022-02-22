@@ -482,13 +482,15 @@ fwrite(cascadetab,file=here('outdata/cascadetab.csv'))
 ## === making CDRs and getting some relevant HIV data ===
 whodir <- glue('~/Dropbox/Documents/WHO_TBreports/data2020/')
 
-## TODO update?
 ## === load WHO notifications
 ## http://www.who.int/tb/country/data/download/en/
-fn <- whodir + 'TB_notifications_2020-10-15.csv'
+fn <- here('indata/TB_notifications_2020-10-15.csv')
 N <- fread(fn)
 
-nmz <- paste0('newrel_',c('m04','f04','m59','f59','m1014','f1014','m014','f014'))
+nmz <- paste0('newrel_',c('m04','f04',
+                          'm59','f59',
+                          'm1014','f1014',
+                          'm014','f014'))
 nmz <- c('iso3','year',nmz)
 
 ## reduce to relevant data: 2018 has no NA
@@ -503,7 +505,7 @@ NP
 
 
 ## === load WHO age-specific incidence estimates
-fn <- whodir + 'TB_burden_age_sex_2020-10-15.csv'
+fn <- here('indata/TB_burden_age_sex_2020-10-15.csv')
 A <- fread(fn)
 ## keep only relevant categories
 A <- A[year==2019]
@@ -520,14 +522,15 @@ A <- A[iso3 %in% cnisos]
 A
 
 ## HIV
-fn <- whodir + 'TB_burden_countries_2020-10-15.csv'
+fn <- here('indata/TB_burden_countries_2020-10-15.csv')
 H <- fread(fn)
 H <- H[year==2019,.(iso3,e_tbhiv_prct,e_tbhiv_prct_lo,e_tbhiv_prct_hi)]
 H <- H[iso3 %in% cnisos]
 H[,hiv:=e_tbhiv_prct/100]
 H[,hiv.sd:=(e_tbhiv_prct_hi-e_tbhiv_prct_lo)/392] #adults of course
 H <- H[,.(iso3,hiv,hiv.sd)]
-save(H,file=here('data/H.Rdata'))
+hfn <- here('data/H.Rdata')
+save(H,file=hfn)
 
 
 ## === merge data
@@ -561,8 +564,10 @@ CDR <- merge(CDR,CDRu,by='iso3',all.x=TRUE)
 CDR[,cdr.v:=NA_real_]
 CDR[,cdr.v:=(rel.sd*value)^2]
 CDR[,rel.sd:=NULL]
+CDR <- CDR[iso3 %in% cnisos]
+cdrfn <- here('data/CDR.Rdata')
+save(CDR,file=cdrfn)
 
-save(CDR,file=here('data/CDR.Rdata'))
 
 ## Figure 1
 ## HHCM ACF

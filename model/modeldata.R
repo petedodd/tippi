@@ -41,7 +41,7 @@ edatm[,RR:=exp(value)]
 edat <- edatm[,.(id,quant,age,country=variable,RR)]
 
 save(edat,file=here('data/edat.Rdata'))
-## load(file=here('data/edat.Rdata'))
+load(file=here('data/edat.Rdata'))
 
 ## ===== COUNTRY KEY
 (cns <- edat[,unique(country)])
@@ -94,7 +94,7 @@ if(TRUE){## if(!file.exists(fn)){
 
 ## screening by entry-point
 SBEP <- fread(here('indata/screened_by_entrypoint.csv'))
-SBEP[,iso3:=c("CMR","DIV","COD","KEN","LSO","MWI","UGA","ZWE")]
+SBEP[,iso3:=c("CMR","CIV","COD","KEN","LSO","MWI","UGA","ZWE")]
 save(SBEP,file=here('data/SBEP.Rdata'))
 
 ## blextract1.csv  blextract2.csv  resoure.int.csv
@@ -233,7 +233,7 @@ ggsave(filename=here('graphs/intervention_cascade.png'),
 
 
 ATR <- ATR[,.(metric,country,frac)]
-save(ATR,file=here('data/ATR.Rdata')) #cascade
+save(ATR,file=here('data/ATR.Rdata')) #cascade per ATT initiation
 
 load(file=here('data/ATR.Rdata')) #cascade
 
@@ -267,42 +267,84 @@ CD[Activity=="Xpert testing", #add on
 CD[,c('uc.soc1','uc.soc.sd1','uc.int1'):=NULL] #remove temporary data
 CD[Activity=="Xpert testing",.(Country,uc.soc,uc.soc.sd,uc.int)] #check
 
-## map unit costs to activities
+## --- splitting screening types
+unique(CD[,.(Activity,metric)]) #metric is from ATR, Activity is from CD
+## NOTE in ATR, only have "Screened for symptoms" -- needs splitting using SBEP
+
+SBEPm <- melt(SBEP[,.(iso3,CBhhcm,FBhhcm,HIVicf,nonHIVicf)],id='iso3')
+SBEPm[,total:=sum(value),by=iso3]
+SBEPm[,epfrac:=value/total] #entry-point fraction for screening
+SBEPm[,sum(epfrac),by=iso3] #check
+
+## merge cateogries
+SBEPm[variable=='CBhhcm',Activity:='Community hhci']
+SBEPm[variable=='FBhhcm',Activity:='Facility hhci']
+SBEPm[variable=='HIVicf',Activity:='Screening in HIV clinic']
+SBEPm[variable=='nonHIVicf',Activity:='Screening in non-HIV clinic']
+
+
+## NOTE TODO LSO omitted for now
+SBEPm <- SBEPm[iso3!='LSO']
+
+## do merge, add epfrac =1 for rest
+CD <- merge(CD,SBEPm[,.(iso3,Activity,epfrac)],
+            by=c('iso3','Activity'),all=TRUE)
+CD[is.na(epfrac),epfrac:=1]
+
+## --- mapping between metrics and activities
+screenacts <- CD[,grep("creen|hhci",unique(Activity),value=TRUE)]
+
+CD[Activity %in% screenacts,
+   metric:="Screened for symptoms"] #NM/PJD -- adding all screenings
+
 CD[Activity=='Presumptive TB evaluation',
    metric:="Presumptive TB identified"] #NM
 
-
-## TODO need to split out HIV component?
-## TODO using SBEP from above
-## [1] "Community hhci"              "Facility hhci"
-## [3] "Screening in HIV clinic"     "Screening in non-HIV clinic"
-CD[Activity=="Screening in non-HIV clinic",
-   metric:="Screened for symptoms"] #NM
-
-## CD[Activity=='Sample collection',
-##    metric:="Sample collection"] #NM
 CD[Activity=='Xpert testing',
    metric:="Presumptive TB tested on Xpert"]
+
 CD[Activity=='TB treatment',
    metric:="TB treatment"]
 
-CD[grepl('reen',Activity)] #NOTE TODO some of the ucs are 0
+CD[Activity=='TPT treatment',
+   metric:="TPT treatment"]
 
-CD2 <- CD[!is.na(metric)]
+## NOTE these are not in below and dropped from cascade merge
+## OK for sample collection which is already buily into Xpert testing
+## TODO build X-ray costs in
+
+CD[Activity=='Sample collection',
+   metric:="Sample collection"]
+
+CD[Activity=='Chest x-ray',
+   metric:="Chest x-ray"]
+
+unique(CD[,.(Activity,metric)]) #check
+
+## aggregate over metrics before merge
+CD[is.na(uc.soc.sd),uc.soc.sd:=0]
+CD[is.na(uc.int.sd),uc.int.sd:=0]
+
+
+CD <- CD[,.(uc.soc=sum(uc.soc*epfrac),uc.soc.sd=ssum(uc.soc.sd*epfrac),
+            uc.int=sum(uc.int*epfrac),uc.int.sd=ssum(uc.int.sd*epfrac)
+            ), by=.(iso3,metric)]
+
+
+## merge into cascade
 ATR <- merge(ATR,countrykey,by='country')
 
 ART2 <- rbind(ATR[,.(iso3,metric,frac)],
               data.table(iso3=cnisos,metric='TB treatment',frac=1.0)) #TB treatment added to cascade
 
+## adding dx, which isn't in itself associated with resources
 CD2 <- rbindlist(list(
-    CD2[,.(iso3,metric,uc.soc,uc.soc.sd,uc.int)],
+    CD[,.(iso3,metric,uc.soc,uc.soc.sd,uc.int)],
     data.table(iso3=cnisos,metric='Diagnosed with TB',
                uc.soc=0.0,uc.soc.sd=0.0,uc.int=0.0)))
 
-ART2 <- merge(ART2,CD2,
-              by=c('iso3','metric'))
-## ART2[is.na(uc.int),uc.int:=0.0]
-ART2[is.na(uc.soc.sd),uc.soc.sd:=0]
+## NOTE this drops unused init costs (X-ray, sample, TPT)
+ART2 <- merge(ART2,CD2,by=c('iso3','metric'))
 ART2[iso3=='MWI']
 
 save(ART2,file=here('data/ART2.Rdata')) #cascade + costs
@@ -433,6 +475,7 @@ setcolorder(cascadetab.int,ccs)
 cascadetab.int[,iso3:=NULL]
 cascadetab <- cbind(cascadetab.soc,cascadetab.int)
 cascadetab
+
 fwrite(cascadetab,file=here('outdata/cascadetab.csv'))
 
 ## NOTE below here is WHO data and doesn't relate to costing

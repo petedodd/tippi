@@ -81,3 +81,61 @@ NYASHA
 - add to appendix on costing (relies on Pete outlining)
 - York thresholds?
 - fu w/Sushant
+
+
+# New tables
+
+## table 1
+
+Simple logic:
+
+| intervention | activity | country |
+| ATT SOC      |          |         |
+| ATT INT      |          |         |
+| PT           |          |         |
+
+
+Detailed items:
+
+| intervention | activity                                   |
+| ATT SOC      | Screened                                   |
+| ATT SOC      | Presumptive TB                             |
+| ATT SOC      | Tested with Xpert                          |
+| ATT SOC      | TB diagnosed                               |
+| ATT SOC      | TB treated                                 |
+| ATT SOC      | Cost, $ (SD)                               |
+| ATT INT      | Screened                                   |
+| ATT INT      | Presumptive TB                             |
+| ATT INT      | Tested with Xpert                          |
+| ATT INT      | TB diagnosed                               |
+| ATT INT      | TB treated                                 |
+| ATT INT      | Cost, $ (SD)                               |
+| TPT INT      | Ratio of PT initiations to ATT initiations |
+| TPT INT      | PT via HIV clinic                          |
+| TPT INT      | HHCM community based                       |
+| TPT INT      | Started on PT                              |
+| TPT INT      | Households screened                        |
+| TPT INT      | Children screened                          |
+| TPT INT      | Presumptive TB                             |
+| TPT INT      | Diagnosed TB                               |
+| TPT INT      | Cost, $ (SD)                               |
+
+## table 2
+
+Simple logic:
+
+| internvetion | SOC | INT | Difference |
+|  ICF         |     |     |            |
+|  HHCM        |     |     |            |
+|  combined    |     |     |            |
+
+
+Detiled items
+
+| Country | Started treatment | Cost | Started treatment | Cost | Started PT | Incident TB | Started ATT | TB deaths | Life-years (LYs) | Discounted LYs | Cost | ICER |
+|         |                   |      |                   |      |            |             |             |           |                  |                |      |      |
+
+
+To think: per TPT, per ATT, per...
+
+Xray costs

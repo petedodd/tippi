@@ -642,6 +642,8 @@ hago[,(vec):=lapply(.SD, function(x) round(x,2)), .SDcols = vec]
 
 fwrite(hago,file=here('outdata/PTC.csv')) #save as output too
 
+## reformatting into parts of Table 1?
+
 
 ## merge into PT data
 PT <- merge(PT,hag,by=c('country','age'),all.x = TRUE)

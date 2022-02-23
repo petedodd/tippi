@@ -233,6 +233,7 @@ ggsave(filename=here('graphs/intervention_cascade.png'),
 
 
 ATR <- ATR[,.(metric,country,frac)]
+
 save(ATR,file=here('data/ATR.Rdata')) #cascade per ATT initiation
 
 load(file=here('data/ATR.Rdata')) #cascade
@@ -465,6 +466,13 @@ cascadetab.soc <- dcast(cascadetab.soc,iso3~metric,
 cascadetab.int <- dcast(cascadetab.int,iso3~metric,
                         value.var = 'frac')
 
+## this block is for table 1 below
+ctsm <- melt(cascadetab.soc,id='iso3')
+ctsm[,condition:='SOC']
+ctim <- melt(cascadetab.int,id='iso3')
+ctim[,condition:='INT']
+ctm <- rbind(ctsm,ctim)
+
 ccs <- c("iso3","Screened for symptoms",
          "Presumptive TB identified",
          "Presumptive TB tested on Xpert",
@@ -477,6 +485,20 @@ cascadetab <- cbind(cascadetab.soc,cascadetab.int)
 cascadetab
 
 fwrite(cascadetab,file=here('outdata/cascadetab.csv'))
+
+## ------ reformatting for upper part of Table 1 -----
+ctm <- merge(ctm,countrykey,by='iso3')
+ctm[,iso3:=NULL]
+ctm <- ctm[order(country,condition,variable)]
+ctmc <- dcast(ctm,condition + variable ~ country,value.var = 'value')
+ctmc$condition <- factor(ctmc$condition,levels=c('SOC','INT'),ordered=TRUE)
+ctmc$variable <- factor(ctmc$variable,levels=ccs[-1],ordered=TRUE)
+setkey(ctmc,condition,variable)
+Table1ATT <- copy(ctmc)
+
+save(Table1ATT,file=here('data/Table1ATT.Rdata'))
+
+
 
 ## NOTE below here is WHO data and doesn't relate to costing
 ## === making CDRs and getting some relevant HIV data ===
@@ -706,6 +728,28 @@ names(ASM)[c(1,3)] <- c('country','period')
 ASM[,`0-14`:=NULL]
 
 save(ASM,file=here('data/ASM.Rdata'))
+
+
+## completing Table 1
+BCI <- BC[,.(Country,BR=1/BR,IR=1/IR)] #report other way up
+Table1PT <- transpose(BCI,make.names = 'Country')
+
+Table1PT[,c('condition','variable'):=.(rep('PT',2),
+                                       c('Baseline ratio PT:ATT intiations',
+                                         'Intervention ratio PT:ATT intiations'))]
+
+setcolorder(Table1PT,c('condition','variable',BC$Country))
+
+save(Table1PT,file=here('data/Table1PT.Rdata'))
+
+## PT via HIV clinic -- hago?
+## HHCM community based
+## Started on PT
+## Households screened
+## Children screened
+## Presumptive TB
+## Diagnosed TB
+## Cost per PT initiation, $ (SD)
 
 
 

@@ -34,3 +34,18 @@ upload.to.sheets(here('model/outdata/'),"CEAC50.csv",shid)
 upload.to.sheets(here('model/outdata/'),"CEAC50pt.1.csv",shid)
 upload.to.sheets(here('model/outdata/'),"ptsuccess.csv",shid)
 upload.to.sheets(here('model/outdata/'),"txsuccess.csv",shid)
+
+
+## need article tables
+yurl <- "https://docs.google.com/spreadsheets/d/1p8ZT0BP-lABM0W0z6V6I_4cg51ndPYyyUKn11Cq9f5M/edit#gid=0"
+shidneat <- as.character(as_sheets_id(yurl))
+
+
+## build 1st
+load(here('model/data/Table1PT.Rdata'))
+load(here('model/data/Table1ATT.Rdata'))
+## TODO load cost
+
+Table1 <- rbind(Table1ATT,Table1PT)
+
+write_sheet(Table1,shidneat,sheet="Tab1RAW")

@@ -757,33 +757,79 @@ tmp2 <- SBEP[,.(country, 1e2*CBhhcm/(CBhhcm+FBhhcm))]
 tmp2[country=='CDI',country:="Cote d'Ivoire"]
 tmp2 <- transpose(tmp2,make.names = TRUE)
 tmp2[,c('condition','variable'):=.('PT','HHCM community-based')]
-setcolorder(tmp1,names(Table1PT))
+setcolorder(tmp2,names(Table1PT))
 
 rqty <- c("Number of Index cases with contact tracing done",
           "PT initiation among contacts")
 ## Started on PT
-tmp3 <- RIM[metric %in% rqty[2],.(country,value)]
+tmp3 <- RIM[metric %in% rqty[2] & country !='Tanzania',.(country,value)]
+tmp3 <- transpose(tmp3,make.names = TRUE)
+tmp3[,c('condition','variable'):=.('PT',rqty[2])]
+setcolorder(tmp3,names(Table1PT))
 
 
 ## Households screened
-RIM[metric %in% rqty[1]]
+tmp4 <- RIM[metric %in% rqty[1] & country !='Tanzania',.(country,value)]
+tmp4 <- transpose(tmp4,make.names = TRUE)
+tmp4[,c('condition','variable'):=.('PT',rqty[1])]
+setcolorder(tmp4,names(Table1PT))
 
 
 ## Children screened
-SBEP[,.(country, (CBhhcm+FBhhcm))]
+tmp5 <- SBEP[,.(country, (CBhhcm+FBhhcm))]
+tmp5[country=='CDI',country:="Cote d'Ivoire"]
+tmp5 <- transpose(tmp5,make.names = TRUE)
+tmp5[,c('condition','variable'):=.('PT','Child HH contacts screened')]
+setcolorder(tmp5,names(Table1PT))
 
 
 ## Presumptive TB
 ## NOTE this does this & next, but it is same across countries
-B2[metric %in%
-   Dc('Number of Index cases with contact tracing done','Presumptive TB identified','Diagnosed with TB')]
+## NOTE this is also based on BL data for presum/prevalence - used to model
+## TODO query whether best data available by country
+## TODO these are the relevant qties used in model
+tmpr <- B2[metric %in%
+           c('Number of Index cases with contact tracing done',
+             'Presumptive TB identified','Diagnosed with TB')]
+tmpr[,perHH:=total/tmpr[metric=='Number of Index cases with contact tracing done',total]]
+
+
+tmps <- SBEP[,.(country, kids=(CBhhcm+FBhhcm))]
+tmps[country=='CDI',country:="Cote d'Ivoire"]
+kidsperhh <- merge(tmps,
+                   RIM[metric %in% rqty[1] & country !='Tanzania',.(country,nhh=value)],
+                   by='country')
+kidsperhh[,kidsphh:=kids/nhh]
+kidsperhh[,tb:=nhh*tmpr[metric=='Diagnosed with TB',ratio]]
+kidsperhh[,pr:=nhh*tmpr[metric=='Presumptive TB identified',ratio]]
+kidsperhh[,c('tbperkid','prperkid'):=.(tb/kids,pr/kids)]
+
+tmp6 <- transpose(kidsperhh[,.(country,pr)],make.names = TRUE)
+tmp6[,c('condition','variable'):=.('PT','Child HH contacts presumed TB')]
+setcolorder(tmp6,names(Table1PT))
 
 ## Diagnosed TB
+tmp7 <- transpose(kidsperhh[,.(country,tb)],make.names = TRUE)
+tmp7[,c('condition','variable'):=.('PT','Child HH contacts diagnosed with TB')]
+setcolorder(tmp7,names(Table1PT))
 
+Table1PTxtraA <- rbindlist(list(tmp1,tmp2))
+Table1PTxtraB <- rbindlist(list(tmp3,tmp4,tmp5,tmp6,tmp7))
+
+## make B table relative to top row
+Table1PTxtraB <- cbind(Table1PTxtraB[,.(condition,variable)],
+                       Table1PTxtraB[,lapply(.SD,function(x) x/x[1]),
+                                     .SDcols=names(Table1PTxtraB)[-c(1:2)]])
+
+
+Table1PT <- rbind(Table1PT,Table1PTxtraA)
+Table1PT <- rbind(Table1PT,Table1PTxtraB)
+
+save(Table1PT,file=here('data/Table1PT.Rdata'))
 
 
 ## Cost per PT initiation, $ (SD)
-## TODO
+## TODO -- see model script
 
 
 

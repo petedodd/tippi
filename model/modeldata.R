@@ -742,18 +742,48 @@ setcolorder(Table1PT,c('condition','variable',BC$Country))
 
 save(Table1PT,file=here('data/Table1PT.Rdata'))
 
+load(file=here('data/Table1PT.Rdata'))
+
+
+
 ## PT via HIV clinic -- hago?
-## HHCM community based
+tmp1 <- transpose(PTFH[,.(country, 1e2*ptinhiv)],make.names = TRUE)
+tmp1[,c('condition','variable'):=.('PT','PT via HIV clinic')]
+setcolorder(tmp1,names(Table1PT))
+
+
+## HHCM community based*; *=calculated on screens
+tmp2 <- SBEP[,.(country, 1e2*CBhhcm/(CBhhcm+FBhhcm))]
+tmp2[country=='CDI',country:="Cote d'Ivoire"]
+tmp2 <- transpose(tmp2,make.names = TRUE)
+tmp2[,c('condition','variable'):=.('PT','HHCM community-based')]
+setcolorder(tmp1,names(Table1PT))
+
+rqty <- c("Number of Index cases with contact tracing done",
+          "PT initiation among contacts")
 ## Started on PT
+tmp3 <- RIM[metric %in% rqty[2],.(country,value)]
+
+
 ## Households screened
+RIM[metric %in% rqty[1]]
+
+
 ## Children screened
+SBEP[,.(country, (CBhhcm+FBhhcm))]
+
+
 ## Presumptive TB
+## NOTE this does this & next, but it is same across countries
+B2[metric %in%
+   Dc('Number of Index cases with contact tracing done','Presumptive TB identified','Diagnosed with TB')]
+
 ## Diagnosed TB
+
+
+
 ## Cost per PT initiation, $ (SD)
-
-
-
-
+## TODO
 
 
 

@@ -42,10 +42,14 @@ shidneat <- as.character(as_sheets_id(yurl))
 
 
 ## build 1st
-load(here('model/data/Table1PT.Rdata'))
 load(here('model/data/Table1ATT.Rdata'))
+load(here('model/data/Table1PT.Rdata'))
+load(here('model/data/Table1PTcost.Rdata'))
 ## TODO load cost
 
-Table1 <- rbind(Table1ATT,Table1PT)
+setcolorder(Table1PTcost,names(Table1PT))
+
+Table1 <- rbindlist(list(Table1ATT,Table1PT,Table1PTcost))
 
 write_sheet(Table1,shidneat,sheet="Tab1RAW")
+

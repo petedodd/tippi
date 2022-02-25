@@ -144,6 +144,8 @@ HHCM <- HHCM[,.(value=sum(value)),by=.(age,activity)]
 ## make relative to index cases with HHCM
 HHCM[,value:=value/HHCM[activity=="index cases with HHCM",value]]
 
+## TODO X-check with modeldata & table 1
+
 ## part1
 ## ================= ATT component ============================
 
@@ -1085,6 +1087,19 @@ pice <- PT1[is.finite(cost.soc),.(numPT.soc=1, #TODO remove condition
                ICER=mean(Dcost)/mean(dDALY)
                ),
             by=country]
+
+## NOTE before x100, output SOC unit cost for table 1
+Table1PTcost <- PT1[is.finite(cost.soc),
+                   .(cost.soc=mean(cost.soc),
+                     cost.soc.sd=sd(cost.soc)),by=country]
+Table1PTcost[,txt:=paste0(round(cost.soc)," (",round(cost.soc.sd),")")]
+Table1PTcost <- transpose(Table1PTcost[,.(country,txt)],
+                          make.names = TRUE)
+Table1PTcost[,c('condition',
+              'variable'):=.('PT',
+                             'Cost per PT initiation, $ (SD)')]
+save(Table1PTcost,file=here('data/Table1PTcost.Rdata'))
+
 
 ## multiply most by 100
 vec <- names(pice)

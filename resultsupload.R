@@ -55,8 +55,14 @@ Table1 <- rbindlist(list(Table1ATT,Table1PT,Table1PTcost))
 write_sheet(Table1,shidneat,sheet="Tab1RAW")
 
 ## ---- Table 2 -------
+
+## ATT part
 load(here('model/outdata/Table2ATT.Rdata'))
-
-
 write_sheet(Table2ATT,shidneat,sheet="Tab2ATT")
 
+## PT part
+load(here('model/outdata/Table2PT.1.Rdata'))
+write_sheet(Table2PT,shidneat,sheet="Tab2PT")
+
+## combined intervention
+## TODO

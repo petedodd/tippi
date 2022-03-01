@@ -1137,6 +1137,22 @@ picer
 fn <- glue(here('outdata/ICERpt')) + SA +'.' + ACF + '.csv'
 fwrite(picer,file=fn)
 
+## --- PT stuff for Table 2
+
+Table2PT <- picer[,.(country,
+                      treated.soc=numPT.soc,cost.soc,
+                      treated.int=numPT.int,cost.int,
+                      diff.PT=DnumPT,diff.incTB=Dcases,
+                      diff.ATT=Datt,
+                      diff.deaths=Ddeaths,
+                      diff.LYS=LY0.dif,diff.dLYS=LY.dif,
+                      diff.cost="TODO",
+                      ICER)]
+
+fn <- glue(here('outdata/Table2PT')) + SA +'.' + ACF + '.Rdata'
+save(Table2PT,file=fn)
+
+
 piceage <- PT2[is.finite(cost.soc),.(numPT.soc=1,
                cost.soc=mean(cost.soc),
                cost.soc.lo=lof(cost.soc),

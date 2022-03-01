@@ -462,6 +462,17 @@ fn1 <- glue(here('outdata/ICERatt')) + SAT + '.csv'
 fwrite(icer,file=fn1)
 
 
+## --table 2 format
+Table2ATT <- icer[,.(country,treated.soc,cost.soc,treated.int,cost.int,
+                     diff.PT=0,diff.incTB=0,
+                     diff.ATT=treated.dif,
+                     diff.deaths=deaths.dif,
+                     diff.LYS=LY0.dif,diff.dLYS=LY.dif,
+                     diff.cost=cost.dif,ICER)]
+
+fn1 <- glue(here('outdata/Table2ATT')) + SAT + '.Rdata'
+save(Table2ATT,file=fn1)
+
 ## --- ICER tables  by age (as above)
 ## ICERs by country & age
 iceage <- T2[,

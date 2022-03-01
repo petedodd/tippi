@@ -40,16 +40,23 @@ upload.to.sheets(here('model/outdata/'),"txsuccess.csv",shid)
 yurl <- "https://docs.google.com/spreadsheets/d/1p8ZT0BP-lABM0W0z6V6I_4cg51ndPYyyUKn11Cq9f5M/edit#gid=0"
 shidneat <- as.character(as_sheets_id(yurl))
 
-
+## ---- Table 1 -------
 ## build 1st
 load(here('model/data/Table1ATT.Rdata'))
 load(here('model/data/Table1PT.Rdata'))
 load(here('model/data/Table1PTcost.Rdata'))
 ## TODO load cost
 
+
 setcolorder(Table1PTcost,names(Table1PT))
 
 Table1 <- rbindlist(list(Table1ATT,Table1PT,Table1PTcost))
 
 write_sheet(Table1,shidneat,sheet="Tab1RAW")
+
+## ---- Table 2 -------
+load(here('model/outdata/Table2ATT.Rdata'))
+
+
+write_sheet(Table2ATT,shidneat,sheet="Tab2ATT")
 

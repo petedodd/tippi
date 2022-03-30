@@ -1330,13 +1330,12 @@ vec.tpt <- setdiff(names(B),c('country','iso3','id'))
 PTA[,(vec.att):=lapply(.SD, function(x) 100*x* BR/(1+BR)), .SDcols = vec.att]
 PTA[,(vec.tpt):=lapply(.SD, function(x) 100*x* 1 /(1+BR)), .SDcols = vec.tpt]
 
-
 ## -- combined variables for table 2 3rd part
 ## SOC
 PTA[,r.start.soc:=tx+numPT.soc] #Started treatment
 PTA[,r.cost.soc:=cost.soc.ATT+cost.soc.TPT] #Cost
 ## INT
-PTA[,r.start.int:=tx+numPT.soc] #Started treatment
+PTA[,r.start.int:=tx.int+numPT.int] #Started treatment
 PTA[,r.cost.int:=cost.int.ATT+cost.int.TPT] #Cost
 ## differences
 PTA[,r.started.TPT:=numPT.int-numPT.soc]
@@ -1383,6 +1382,8 @@ bicer <- bice[,.(country=country,
                )]
 bicer
 
+bicer[,r.start.soc:='100'] #cosmetic/clarity correction
+
 Table2both <- bicer
 
 fn <- glue(here('outdata/Table2both')) + SA +'.' + ACF + '.Rdata'
@@ -1391,8 +1392,8 @@ save(Table2both,file=fn)
 
 
 ## ================= TODO list ============================
-## no brackets for 1st number
-## error for second number
+## check BR
+## check X-ray costing
 
 ## NOTE
 ## SHARED tippi folder:

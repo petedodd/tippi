@@ -322,6 +322,7 @@ T1 <- T[,.(cost.soc=sum(costt.soc*frac),
            Dcost=sum(Dcost*frac),
            LS=sum(LS*frac),
            ## deaths.soc=sum((deaths.int+LS)*frac),
+           tx=sum(RR*frac),
            deaths.soc=sum(deaths.soc*frac),
            deaths.int=sum(deaths.int*frac),
            dDALY0=sum(dDALY0*frac),
@@ -336,6 +337,7 @@ T2 <- T[,.(cost.soc=(costt.soc),
            cost.int=(costt.int),
            Dcost=(Dcost),
            LS=(LS),
+           tx = RR,
            ## deaths.soc=((deaths.int+LS)),
            deaths.soc=(deaths.soc),
            deaths.int=(deaths.int),
@@ -413,6 +415,9 @@ ice <- T1[,
     Dcost=mean(Dcost),
     Dcost.lo=lof(Dcost),
     Dcost.hi=hif(Dcost),
+    tx=mean(tx),
+    tx.lo=lof(tx),
+    tx.hi=hif(tx),
     ## deaths
     deaths.soc=mean(deaths.soc),
     deaths.soc.lo=lof(deaths.soc),
@@ -436,8 +441,6 @@ ice <- T1[,
     ICER=mean(Dcost)/mean(dDALY)
     ),
   by=country]
-txd <- T[,.(tx=mean(RR),tx.lo=lof(RR),tx.hi=hif(RR)),by=country] #treatment relative to BL
-ice <- merge(ice,txd,by='country')
 
 ## multiply most by 100
 vec <- names(ice)
@@ -449,7 +452,7 @@ icer <- ice[,.(country=country,
                cost.soc = bracket(cost.soc,cost.soc.lo,cost.soc.hi),
                treated.int=bracket(tx,tx.lo,tx.hi),
                cost.int = bracket(cost.int,cost.int.lo,cost.int.hi),
-               treated.dif=bracket(tx-1,tx.lo-1,tx.hi-1),
+               treated.dif=bracket(tx-1e2,tx.lo-1e2,tx.hi-1e2), #NOTE also 100
                cost.dif=bracket(Dcost,Dcost.lo,Dcost.hi),
                deaths.dif=bracket(-LS,-LS.hi,-LS.lo),
                LY0.dif=bracket(dDALY0,dDALY0.lo,dDALY0.hi),
@@ -485,6 +488,9 @@ iceage <- T2[,
              Dcost=mean(Dcost),
              Dcost.lo=lof(Dcost),
              Dcost.hi=hif(Dcost),
+             tx=mean(tx),
+             tx.lo=lof(tx),
+             tx.hi=hif(tx),
              ## deaths
              deaths.soc=mean(deaths.soc),
              deaths.soc.lo=lof(deaths.soc),
@@ -508,8 +514,6 @@ iceage <- T2[,
              ICER=mean(Dcost)/mean(dDALY)
              ),
           by=.(country,age)]
-txda <- T[,.(tx=mean(RR),tx.lo=lof(RR),tx.hi=hif(RR)),by=.(country,age)] #treatment relative to BL
-iceage <- merge(iceage,txda,by=c('country','age'))
 
 ## multiply most by 100
 iceage[,(vec):=lapply(.SD, function(x) 100*x), .SDcols = vec]
@@ -519,7 +523,7 @@ icers <- iceage[,.(country=country,age,
                    cost.soc = bracket(cost.soc,cost.soc.lo,cost.soc.hi),
                    treated.int=bracket(tx,tx.lo,tx.hi),
                    cost.int = bracket(cost.int,cost.int.lo,cost.int.hi),
-                   treated.dif=bracket(tx-1,tx.lo-1,tx.hi-1),
+                   treated.dif=bracket(tx-1e2,tx.lo-1e2,tx.hi-1e2), #NOTE also 100
                    cost.dif=bracket(Dcost,Dcost.lo,Dcost.hi),
                    deaths.dif=bracket(-LS,-LS.hi,-LS.lo),
                    LY0.dif=bracket(dDALY0,dDALY0.lo,dDALY0.hi),
@@ -1109,6 +1113,7 @@ Table1PTcost <- transpose(Table1PTcost[,.(country,txt)],
 Table1PTcost[,c('condition',
               'variable'):=.('PT',
                              'Cost per PT initiation, $ (SD)')]
+
 save(Table1PTcost,file=here('data/Table1PTcost.Rdata'))
 
 
@@ -1130,6 +1135,7 @@ picer <- pice[is.finite(cost.soc),.(country=country,
                     Ddeaths=bracket(Ddeaths,Ddeaths.lo,Ddeaths.hi),
                     LY0.dif=bracket(dDALY0,dDALY0.lo,dDALY0.hi),
                     LY.dif=bracket(dDALY,dDALY.lo,dDALY.hi),
+                    Dcost=bracket(Dcost,Dcost.lo,Dcost.hi),
                     ICER = format(round(ICER),big.mark = ',')
                )]
 picer
@@ -1146,7 +1152,7 @@ Table2PT <- picer[,.(country,
                       diff.ATT=Datt,
                       diff.deaths=Ddeaths,
                       diff.LYS=LY0.dif,diff.dLYS=LY.dif,
-                      diff.cost="TODO",
+                      diff.cost=Dcost,
                       ICER)]
 
 fn <- glue(here('outdata/Table2PT')) + SA +'.' + ACF + '.Rdata'
@@ -1211,6 +1217,7 @@ picers <- piceage[,.(country=country,
                      Ddeaths=bracket(Ddeaths,Ddeaths.lo,Ddeaths.hi),
                      LY0.dif=bracket(dDALY0,dDALY0.lo,dDALY0.hi),
                      LY.dif=bracket(dDALY,dDALY.lo,dDALY.hi),
+                     Dcost=bracket(Dcost,Dcost.lo,Dcost.hi),
                      ICER = format(round(ICER),big.mark = ',')
                )]
 picers
@@ -1287,7 +1294,105 @@ icebrr
 fn <- glue(here('outdata/ICERall')) + SA + '.' + ACF + '.csv'
 fwrite(icebrr,file=fn)
 
+PTT
+
+## --- make a larger set of outputs from both components, and weight appropriately
+## jj
+A <- T1[,.(country,iso3,id,
+           cost.soc.ATT=cost.soc,
+           cost.int.ATT=cost.int,
+           tx=1,tx.int=tx,
+           Dcost.ATT=Dcost,
+           Ddeaths.ATT=-LS,
+           deaths.soc.ATT=deaths.soc,
+           deaths.int.ATT=deaths.int,
+           dDALY0.ATT=dDALY0,
+           dDALY.ATT=dDALY)]
+B <- PT1[,.(country,iso3,id,
+            cases.soc,cases.int,
+            ATT.soc,ATT.int,
+            numPT.soc=1,numPT.int,
+            cost.soc.TPT=cost.soc,
+            cost.int.TPT=cost.int,
+            Ddeaths.TPT=-LS,
+            deaths.soc.TPT=deaths.soc,
+            deaths.int.TPT=deaths.int,
+            dDALY0.TPT=dDALY0,
+            Dcost.TPT=Dcost,
+            dDALY.TPT=dDALY)]
+
+PTA <- merge(A,B,by=c('country','iso3','id'))
+PTA <- merge(PTA,BC[,.(country=Country,BR)],by='country') #weight
+
+## multiply by relevant factors
+vec.att <- setdiff(names(A),c('country','iso3','id'))
+vec.tpt <- setdiff(names(B),c('country','iso3','id'))
+PTA[,(vec.att):=lapply(.SD, function(x) 100*x* BR/(1+BR)), .SDcols = vec.att]
+PTA[,(vec.tpt):=lapply(.SD, function(x) 100*x* 1 /(1+BR)), .SDcols = vec.tpt]
+
+
+## -- combined variables for table 2 3rd part
+## SOC
+PTA[,r.start.soc:=tx+numPT.soc] #Started treatment
+PTA[,r.cost.soc:=cost.soc.ATT+cost.soc.TPT] #Cost
+## INT
+PTA[,r.start.int:=tx+numPT.soc] #Started treatment
+PTA[,r.cost.int:=cost.int.ATT+cost.int.TPT] #Cost
+## differences
+PTA[,r.started.TPT:=numPT.int-numPT.soc]
+PTA[,r.incTB:=cases.int-cases.soc]
+PTA[,r.started.ATT:=(tx.int+ATT.int) - (tx+ATT.soc)] #TODO check not 2x counted
+PTA[,r.TBdeaths:=Ddeaths.ATT+Ddeaths.TPT]
+PTA[,r.LYS:=dDALY0.ATT+dDALY0.TPT]
+PTA[,r.dLYS:=dDALY.ATT+dDALY.TPT]
+PTA[,r.Dcost:=Dcost.ATT+Dcost.TPT]
+
+
+## ----- table 2 output for combined intervention
+bice <- PTA[,.(
+  r.start.soc=mean(r.start.soc),r.start.soc.lo=lof(r.start.soc),r.start.soc.hi=hif(r.start.soc),
+  r.cost.soc=mean(r.cost.soc),r.cost.soc.lo=lof(r.cost.soc),r.cost.soc.hi=hif(r.cost.soc),
+  r.start.int=mean(r.start.int),r.start.int.lo=lof(r.start.int),r.start.int.hi=hif(r.start.int),
+  r.cost.int=mean(r.cost.int),r.cost.int.lo=lof(r.cost.int),r.cost.int.hi=hif(r.cost.int),
+  r.started.TPT=mean(r.started.TPT),r.started.TPT.lo=lof(r.started.TPT),r.started.TPT.hi=hif(r.started.TPT),
+  r.incTB=mean(r.incTB),r.incTB.lo=lof(r.incTB),r.incTB.hi=hif(r.incTB),
+  r.started.ATT=mean(r.started.ATT),r.started.ATT.lo=lof(r.started.ATT),r.started.ATT.hi=hif(r.started.ATT),
+  r.TBdeaths=mean(r.TBdeaths),r.TBdeaths.lo=lof(r.TBdeaths),r.TBdeaths.hi=hif(r.TBdeaths),
+  r.LYS=mean(r.LYS),r.LYS.lo=lof(r.LYS),r.LYS.hi=hif(r.LYS),
+  r.dLYS=mean(r.dLYS),r.dLYS.lo=lof(r.dLYS),r.dLYS.hi=hif(r.dLYS),
+  r.Dcost=mean(r.Dcost),r.Dcost.lo=lof(r.Dcost),r.Dcost.hi=hif(r.Dcost),
+  ## ICER
+  ICER=mean(r.Dcost)/mean(r.dLYS)
+),
+by=country]
+
+## table output
+bicer <- bice[,.(country=country,
+                 r.start.soc=bracket(r.start.soc,r.start.soc.lo,r.start.soc.hi),
+                 r.cost.soc=bracket(r.cost.soc,r.cost.soc.lo,r.cost.soc.hi),
+                 r.start.int=bracket(r.start.int,r.start.int.lo,r.start.int.hi),
+                 r.cost.int=bracket(r.cost.int,r.cost.int.lo,r.cost.int.hi),
+                 r.started.TPT=bracket(r.started.TPT,r.started.TPT.lo,r.started.TPT.hi),
+                 r.incTB=bracket(r.incTB,r.incTB.lo,r.incTB.hi),
+                 r.started.ATT=bracket(r.started.ATT,r.started.ATT.lo,r.started.ATT.hi),
+                 r.TBdeaths=bracket(r.TBdeaths,r.TBdeaths.lo,r.TBdeaths.hi),
+                 r.LYS=bracket(r.LYS,r.LYS.lo,r.LYS.hi),
+                 r.dLYS=bracket(r.dLYS,r.dLYS.lo,r.dLYS.hi),
+                 r.Dcost=bracket(r.Dcost,r.Dcost.lo,r.Dcost.hi),
+                 ICER = format(round(ICER),big.mark = ',')
+               )]
+bicer
+
+Table2both <- bicer
+
+fn <- glue(here('outdata/Table2both')) + SA +'.' + ACF + '.Rdata'
+save(Table2both,file=fn)
+
+
+
 ## ================= TODO list ============================
+## no brackets for 1st number
+## error for second number
 
 ## NOTE
 ## SHARED tippi folder:

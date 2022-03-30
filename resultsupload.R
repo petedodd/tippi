@@ -45,8 +45,6 @@ shidneat <- as.character(as_sheets_id(yurl))
 load(here('model/data/Table1ATT.Rdata'))
 load(here('model/data/Table1PT.Rdata'))
 load(here('model/data/Table1PTcost.Rdata'))
-## TODO load cost
-
 
 setcolorder(Table1PTcost,names(Table1PT))
 
@@ -65,4 +63,5 @@ load(here('model/outdata/Table2PT.1.Rdata'))
 write_sheet(Table2PT,shidneat,sheet="Tab2PT")
 
 ## combined intervention
-## TODO
+load(here('model/outdata/Table2both.1.Rdata'))
+write_sheet(Table2both,shidneat,sheet="Tab2combined")

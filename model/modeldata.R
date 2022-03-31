@@ -10,6 +10,48 @@ library(readxl)
 library(discly)
 rexel <- function(x,...) as.data.table(read_excel(x,...))
 ssum <- function(x) sqrt(sum(x^2))
+gh <- function(x) glue(here(x))
+
+## ====== EMPIRICAL EFFECT DATA
+## px & tx data
+edat <- list()
+for(qty in c('px','tx')){
+  for(age in c('04','514')){
+    fn1 <- gh('../inference/outdata/siteeffects_{qty}_{age}.csv')
+    fn2 <- gh('../inference/outdata/countryeffects_{qty}_{age}.csv')
+    SE <- fread(fn1)
+    CE <- fread(fn2)
+    SE <- SE[int.number>0 & is.finite(site.effect),.(sdl=sd(log(site.effect))),by=country]
+    CE <- merge(CE,SE,by='country')
+    CE[,le:=log(country.effect)]
+
+    ## use log normal sample with country mean and site variance
+    SS <- list()
+    for(cn in CE[,country]){
+      SS[[cn]] <- data.table(country=cn,
+                             id=1:1e4,
+                             RR=exp(rnorm(1e4,
+                                          CE[country==cn,le],
+                                          sd = CE[country==cn,sdl])))
+    }
+    SS <- rbindlist(SS)
+    SS <- dcast(SS,id~country,value.var = 'RR')
+    SS[,quant:=qty]
+    if(age=='04')
+      SS[,age:='0-4']
+    else
+      SS[,age:='5-14']
+    ind <- glue(qty) + '.' + age
+    edat[[ind]] <- SS
+  }
+}
+edat <- rbindlist(edat)
+edatm <- melt(edat,id.vars = c('id','quant','age'))
+edat <- edatm[,.(id,quant,age,country=variable,RR=value)]
+
+save(edat,file=here('data/edat2.Rdata'))
+
+
 
 ## ====== EFFECT DATA FROM INFERENCE
 ## px & tx data
@@ -413,7 +455,7 @@ ggsave(filename=here('graphs/cascade_compare2.png'),w=8,h=5)
 DBR
 
 ## comparison of increases in resources vs effect
-edatm <- edat[,.(RR=mean(RR)),by=.(quant,age,country)]
+## edatm <- edat[,.(RR=mean(RR)),by=.(quant,age,country)]
 
 DBC <- dcast(DBR,country+metric ~ period,value.var = 'frac')
 DBC[,ratio:=Intervention/Baseline]

@@ -8,6 +8,7 @@ library(glue)
 gh <- function(x) glue(here(x))
 dg <- 1
 ft <- function(x)format(x,digits=dg,nsmall=dg)
+source(here('../dataprep/tippifunctions.R'))
 
 ## make single graphs
 grphs <- list()
@@ -15,6 +16,17 @@ for(page in 1:3){
   for(qty in c("tx","px")){
     cat(qty,"...\n")
     ## --- read data
+    ## load data
+    if(qty=='tx'){ #select qty
+      D <- fread(here('../dataprep/outdata/T.csv'))
+    } else{
+      D <- fread(here('../dataprep/outdata/P.csv'))
+    }
+    D <- D[age==shhs[page,aged]] #select age
+    D[,Facility:=site]
+    D[,index:=1:nrow(D)] #for start/ends
+    setkey(D,Country,Facility)
+
     ## empirical data
     ## sites
     siteeffects <- D[,.(site.effect = (Intervention.Num/
@@ -23,6 +35,7 @@ for(page in 1:3){
                         int.number = Intervention.Num,
                         country=Country,
                         index)]
+    fwrite(siteeffects,file=gh('outdata/siteeffects_{qty}_{shhs[page,age]}.csv'))
     ## country
     countryeffects <- D[,.(country.effect =
                              (sum(Intervention.Num)/
@@ -30,6 +43,8 @@ for(page in 1:3){
                              (sum(Baseline.Num)/sum(Baseline.FT)),
                            int.number=sum(Intervention.Num) ),
                         by=.(country=Country)]
+    fwrite(countryeffects,file=gh('outdata/countryeffects_{qty}_{shhs[page,age]}.csv'))
+
     ## MA results
     MC <- fread(gh('outdata/{qty}MC{shhs[page,age]}.csv'))
     MC$country <- factor(MC$country,

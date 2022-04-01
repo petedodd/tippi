@@ -10,8 +10,11 @@ dg <- 1
 ft <- function(x)format(x,digits=dg,nsmall=dg)
 source(here('../dataprep/tippifunctions.R'))
 
+## qty <- 'tx'; page <- 2
+## shhs[page,age]
+
 ## make single graphs
-grphs <- list()
+grphsE <- grphs <- list()
 for(page in 1:3){
   for(qty in c("tx","px")){
     cat(qty,"...\n")
@@ -26,6 +29,9 @@ for(page in 1:3){
     D[,Facility:=site]
     D[,index:=1:nrow(D)] #for start/ends
     setkey(D,Country,Facility)
+
+    ## DM <- dataprep(D)
+    ## intplot(DM) #looks OK
 
     ## empirical data
     ## sites
@@ -84,15 +90,63 @@ for(page in 1:3){
 
     ## save
     grphs[[glue("{qty}{shhs[page,age]}")]] <- MAP
+
+    ## ---- empmirical version
+    SE <- siteeffects[int.number>0 & is.finite(site.effect),
+                      .(sdl=sd(log(site.effect))),by=country]
+    CE <- merge(countryeffects,SE,by='country')
+    CE[,le:=log(country.effect)]
+    CE[,le.lo:=le-1.96*sdl]; CE[,le.hi:=le+1.96*sdl];
+    CE[,c('mid','lo','hi'):=.(exp(le),exp(le.lo),exp(le.hi))]
+    CE$country <- factor(CE$country,
+                         levels=rev(CE$country),ordered = TRUE)
+    CE[,txt:=paste0(ft(mid)," (",ft(lo)," - ",ft(hi),")")]
+
+    ## graph
+    MAP <-
+      ggplot(CE,aes(country,mid)) +
+      geom_point(size=2) +
+      geom_point(data=siteeffects[is.finite(site.effect)],
+                 aes(country,site.effect,
+                     size=int.number,col=country),
+                 shape=1) +
+      geom_point(data=countryeffects,aes(country,country.effect,
+                                         size=int.number,col=country),
+                 shape=4) +
+      geom_hline(yintercept = 1,lty=2,col='darkgrey')+
+      geom_point(size=2) +
+      geom_errorbar(aes(ymin=lo,ymax=hi),width=0) +
+      geom_text(aes(x=country,y=90,label=txt),size=3)+
+      scale_y_log10(limits=c(5e-2,1.4e2),
+                    label=comma) + #NOTE one DRC site omitted
+      ylab('Rate ratio (log scale)')+
+      xlab('Country')+
+      coord_flip() +
+      theme_classic() + ggpubr::grids()+ ggtitle(ttl)+
+      labs(size='Number (intervention)')+
+      guides(colour="none") +
+      theme(legend.position = 'bottom')
+
+    ## save
+    grphsE[[glue("{qty}{shhs[page,age]}")]] <- MAP
+
   }
 }
-## make joined graph
+
+## make joined graphs
 GA <- ggarrange(plotlist = grphs,
                 ncol=2,nrow=3,
                 labels = paste0(letters[1:6],")"),
                 common.legend = TRUE,legend='top')
 ggsave(filename=here("graphs/MAll.eps"),w=13,h=12)
 ggsave(GA,filename=here("graphs/MAll.png"),w=13,h=12)
+
+GA <- ggarrange(plotlist = grphsE,
+                ncol=2,nrow=3,
+                labels = paste0(letters[1:6],")"),
+                common.legend = TRUE,legend='top')
+ggsave(filename=here("graphs/MAllE.eps"),w=13,h=12)
+ggsave(GA,filename=here("graphs/MAllE.png"),w=13,h=12)
 
 
 ## gather summaries for reporting

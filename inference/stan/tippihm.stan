@@ -44,9 +44,3 @@ model{
   DXb ~ poisson(lamb);          /* baseline */
   DXi ~ poisson(lami);          /* intervention */
 }
-
-/* https://discourse.mc-stan.org/t/hierarchical-bayesian-poisson-regression-model/10165 */
-
-/* https://mc-stan.org/docs/2_18/stan-users-guide/hierarchical-logistic-regression.html */
-
-/* https://www.youtube.com/watch?v=5hwOveZlugk */

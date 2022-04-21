@@ -12,6 +12,20 @@ rexel <- function(x,...) as.data.table(read_excel(x,...))
 ssum <- function(x) sqrt(sum(x^2))
 gh <- function(x) glue(here(x))
 
+set.seed(1234)
+
+## ===== COUNTRY KEY
+load(gh('../inference/outdata/bsmy_px_014.Rdata'))
+(cns <- bsmy[,country])
+## cnisos <- c('CMR','CIV','COD','KEN','LSO','MWI','TZA','UGA','ZWE')
+cnisos <- c('CMR','CIV','COD','KEN','LSO','MWI','UGA','ZWE')
+
+countrykey <- data.table(iso3=cnisos,country=cns)
+setkey(countrykey,iso3)
+countrykey
+
+save(countrykey,file=here('data/countrykey.Rdata'))
+
 ## ====== EMPIRICAL EFFECT DATA
 ## px & tx data
 edat <- list()
@@ -51,50 +65,65 @@ edat <- edatm[,.(id,quant,age,country=variable,RR=value)]
 
 save(edat,file=here('data/edat2.Rdata'))
 
-
-
-## ====== EFFECT DATA FROM INFERENCE
+## ====== EFFECT DATA FROM INFERENCE (new)
 ## px & tx data
 edat <- list()
 for(qty in c('px','tx')){
-    for(age in c('04','514')){
-        fn1 <- glue(here('../inference/outdata/'))
-        fn1 <- fn1 + qty + 'SS' + age + '.Rdata'
-        fn2 <- glue(here('../inference/data/'))
-        fn2 <- fn2 + qty + 'CK.' + age + '.Rdata'
-        load(fn1)
-        load(fn2)
-        CK <- CK[order(cno)]
-        names(SS) <- CK$country
-        SS[,quant:=qty]
-        SS[,id:=1:nrow(SS)]
-        if(age=='04')
-            SS[,age:='0-4']
-        else
-            SS[,age:='5-14']
-        ind <- glue(qty) + '.' + age
-        edat[[ind]] <- SS
-    }
+  for(age in c('04','514')){
+    fn1 <- glue(here('../inference/outdata/MT_'))
+    fn1 <- fn1 + qty + '_' + age + '.Rdata'
+    load(fn1)
+    colnames(MT) <- countrykey$country
+    MT <- as.data.table(MT)
+    MT <- MT[sample(nrow(MT),1e4,replace=TRUE)] #resample to 1e4
+    MT[,id:=1:nrow(MT)]
+    SS <- melt(MT,id='id')
+    SS[,quant:=qty]
+    if(age=='04')
+      SS[,age:='0-4']
+    else
+      SS[,age:='5-14']
+    ind <- glue(qty) + '.' + age
+    edat[[ind]] <- SS
+  }
 }
 edat <- rbindlist(edat)
-edatm <- melt(edat,id.vars = c('id','quant','age'))
-edatm[,RR:=exp(value)]
+edat <- edat[,.(id,quant,age,country=variable,RR=value)]
 
-edat <- edatm[,.(id,quant,age,country=variable,RR)]
+save(edat,file=here('data/edat3.Rdata'))
+load(file=here('data/edat3.Rdata'))
 
-save(edat,file=here('data/edat.Rdata'))
-load(file=here('data/edat.Rdata'))
+## ## ====== EFFECT DATA FROM INFERENCE
+## ## px & tx data
+## edat <- list()
+## for(qty in c('px','tx')){
+##     for(age in c('04','514')){
+##         fn1 <- glue(here('../inference/outdata/'))
+##         fn1 <- fn1 + qty + 'SS' + age + '.Rdata'
+##         fn2 <- glue(here('../inference/data/'))
+##         fn2 <- fn2 + qty + 'CK.' + age + '.Rdata'
+##         load(fn1)
+##         load(fn2)
+##         CK <- CK[order(cno)]
+##         names(SS) <- CK$country
+##         SS[,quant:=qty]
+##         SS[,id:=1:nrow(SS)]
+##         if(age=='04')
+##             SS[,age:='0-4']
+##         else
+##             SS[,age:='5-14']
+##         ind <- glue(qty) + '.' + age
+##         edat[[ind]] <- SS
+##     }
+## }
+## edat <- rbindlist(edat)
+## edatm <- melt(edat,id.vars = c('id','quant','age'))
+## edatm[,RR:=exp(value)]
 
-## ===== COUNTRY KEY
-(cns <- edat[,unique(country)])
-## cnisos <- c('CMR','CIV','COD','KEN','LSO','MWI','TZA','UGA','ZWE')
-cnisos <- c('CMR','CIV','COD','KEN','LSO','MWI','UGA','ZWE')
+## edat <- edatm[,.(id,quant,age,country=variable,RR)]
 
-countrykey <- data.table(iso3=cnisos,country=cns)
-setkey(countrykey,iso3)
-countrykey
-
-save(countrykey,file=here('data/countrykey.Rdata'))
+## save(edat,file=here('data/edat.Rdata'))
+## load(file=here('data/edat.Rdata'))
 
 ## ===== DISCOUNTED LIFE-YEARS TABLES
 ## NOTE discount rate set here

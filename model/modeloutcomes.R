@@ -38,7 +38,7 @@ source(here('../dataprep/tippifunctions.R')) #CEAC & plotting utils
 
 ## ===== INPUT DATA
 ## many of these are made by modeldata.R
-load(file=here('data/edat2.Rdata')) #effect data from inference NOTE using empirical atm
+load(file=here('data/edat3.Rdata')) #effect data from inference NOTE using empirical atm
 load(file=here('data/LYK.Rdata'))  #LYs discounted
 load(file=here('data/DBC.Rdata')) #cascade ratios for int v bl
 load(file=here('data/ATR.Rdata')) #ATT cascade

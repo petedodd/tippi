@@ -10,6 +10,7 @@ library(glue)
 rotx <- theme(axis.text.x = element_text(angle = 90, hjust = 1))
 shhs <- data.table(sheet=1:3,age=c('014','04','514'),aged=c('0-14','0-4','5-14'))
 setkey(shhs,sheet) ## sheet hash
+gh <- function(x) glue(here(x))
 
 
 ## utility functions

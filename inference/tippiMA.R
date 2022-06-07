@@ -4,8 +4,8 @@ page <- as.integer(args[4]) #age
 print(qty)
 print(page)
 
-## ## stop()
-## qty <- 'tx'
+## ## ## stop()
+## qty <- 'px'
 ## page <- 2 #NOTE change this to change age group
 
 
@@ -13,6 +13,7 @@ print(page)
 library(here)
 library(rstanarm)
 library(lme4)
+library(metafor)
 
 ## ========== functions ===========
 source(here('../dataprep/tippifunctions.R'))
@@ -72,7 +73,7 @@ save(fsmy,file=gh('outdata/fsmy_{qty}_{shhs[page,age]}.Rdata'))
 smm <- stan_glmer(formula = Num ~ (period|country/site),
                   offset=log(FT),
                   data=DM,
-                  chains=2,cores=2,
+                  chains=2,cores=1,
                   family = "poisson")
 
 ## MT <- as.matrix(smm,regex_pars = c('periodIntervention'))
@@ -88,7 +89,8 @@ nmz <- c(
   "b[periodIntervention country:5]",
   "b[periodIntervention country:6]",
   "b[periodIntervention country:7]",
-  "b[periodIntervention country:8]"
+  "b[periodIntervention country:8]",
+  "b[periodIntervention country:9]"
 )
 
 MT <- as.matrix(smm,pars = nmz)
@@ -108,8 +110,25 @@ bsmy <- data.table(
 
 save(bsmy,file=gh('outdata/bsmy_{qty}_{shhs[page,age]}.Rdata'))
 
+## RMA for each country separately
+RMAR <- list()
+for(cn in D[,unique(Country)]){
+  print(cn)
+  tmp <- D[Country==cn]
+  modcn <- rma.glmm(measure = "IRR",
+                    model='CM.EL',
+                    data = tmp,
+                    x2i = Baseline.Num, t2i = Baseline.FT,
+                    x1i = Intervention.Num, t1i = Intervention.FT)
+  bz <- c(modcn$b,modcn$ci.lb,modcn$ci.ub)
+  bz <- exp(bz)
+  RMAR[[cn]] <- data.table(country=cn,RR=bz[1],RR.lo=bz[2],RR.hi=bz[3],lRR.se=modcn$se)
+}
+RMAR <- rbindlist(RMAR)
 
-## can comment below
+save(RMAR,file=gh('outdata/RMAR_{qty}_{shhs[page,age]}.Rdata'))
+
+
 ## empirical data
 ## sites
 siteeffects <- D[,.(site.effect = (Intervention.Num/Intervention.FT)/
@@ -128,6 +147,26 @@ countryeffects <- D[,.(country.effect =
 siteeffects[,c('RR.mid','RR.lo','RR.hi'):=NA]
 countryeffects[,c('RR.mid','RR.lo','RR.hi'):=NA]
 fsmy[,c('RR.lo','RR.hi'):=NA]
+
+## compare methods
+ceall <- rbindlist(list(countryeffects[,.(country,RR.mid=country.effect,RR.lo,RR.hi,type='empirical')],
+                        RMAR[,.(country,RR.mid=RR,RR.lo,RR.hi,type='countrywise RMA')],
+                        fsmy[,.(country,RR.mid,RR.lo,RR.hi,type='frequentist MLM')],
+                        bsmy[,.(country,RR.mid,RR.lo,RR.hi,type='Bayesian MLM')]))
+
+
+ttl <- glue('{qty}: age {shhs[page,aged]}')
+psn <- position_dodge(0.1)
+GP <- ggplot(ceall,aes(country,y=RR.mid,ymin=RR.lo,ymax=RR.hi,col=type,shape=type))+
+  geom_point(position=psn)+geom_errorbar(width=0,position=psn)+
+  xlab('Country')+ylab('Rate ratio')+
+  coord_flip() + theme_classic()+ggpubr::grids()+
+  theme(legend.position = 'top')+
+  ggtitle(ttl)+scale_y_sqrt(limits = c(0,min(100,max(ceall$RR.hi,na.rm = TRUE))))
+## GP
+
+ggsave(GP,file=gh('graphs/compare_{qty}_{shhs[page,age]}.pdf'),w=8,h=8)
+
 
 ## reorder
 lvl <- unique(as.character(D$Country))
@@ -178,7 +217,6 @@ save(MAP,file=fn)
 
 
 
-
 ## https://mc-stan.org/rstanarm/reference/as.matrix.stanreg.html
 
 ## library(lattice)
@@ -210,7 +248,6 @@ save(MAP,file=fn)
 ## test <- model.matrix(object = Num ~ FT * (Facility + period),
 ##                      data=dm)
 ## test[1:6,1:10]
-
 
 
 
@@ -252,7 +289,6 @@ save(MAP,file=fn)
 ##   forest(modcn,main=ti,transf = exp)
 ##   dev.off()
 ## }
-
 
 ## ## 3 level model
 ## modall <- rma.glmm(measure = "IRR",model='CM.EL',

@@ -15,10 +15,11 @@ gh <- function(x) glue(here(x))
 set.seed(1234)
 
 ## ===== COUNTRY KEY
+## NOTE if inference hasn't been run, skip to SKIP below and load files before continuing
 load(gh('../inference/outdata/bsmy_px_014.Rdata'))
 (cns <- bsmy[,country])
 ## cnisos <- c('CMR','CIV','COD','KEN','LSO','MWI','TZA','UGA','ZWE')
-cnisos <- c('CMR','CIV','COD','KEN','LSO','MWI','UGA','ZWE')
+cnisos <- c('CMR','CIV','COD','KEN','LSO','MWI','TZA','UGA','ZWE')
 
 countrykey <- data.table(iso3=cnisos,country=cns)
 setkey(countrykey,iso3)
@@ -61,6 +62,7 @@ for(qty in c('px','tx')){
 }
 edat <- rbindlist(edat)
 edatm <- melt(edat,id.vars = c('id','quant','age'))
+edatm <- as.data.table(edatm)
 edat <- edatm[,.(id,quant,age,country=variable,RR=value)]
 
 save(edat,file=here('data/edat2.Rdata'))
@@ -91,7 +93,11 @@ edat <- rbindlist(edat)
 edat <- edat[,.(id,quant,age,country=variable,RR=value)]
 
 save(edat,file=here('data/edat3.Rdata'))
+
+
+## start here (SKIP)
 load(file=here('data/edat3.Rdata'))
+load(file=here('data/countrykey.Rdata'))
 
 ## ## ====== EFFECT DATA FROM INFERENCE
 ## ## px & tx data
@@ -165,7 +171,7 @@ if(TRUE){## if(!file.exists(fn)){
 
 ## screening by entry-point
 SBEP <- fread(here('indata/screened_by_entrypoint.csv'))
-SBEP[,iso3:=c("CMR","CIV","COD","KEN","LSO","MWI","UGA","ZWE")]
+SBEP[,iso3:=c("CMR","CIV","COD","KEN","LSO","MWI","UGA","ZWE")] #TODO lacking TZA
 save(SBEP,file=here('data/SBEP.Rdata'))
 
 ## blextract1.csv  blextract2.csv  resoure.int.csv
@@ -181,7 +187,7 @@ fn <- here('indata/blextract2.csv')
 B2 <- fread(fn)
 ## cascades & resources during intervention
 ## - from 'cascade data for Nyasha' spreadsheet
-fn <- here('indata/resource.int.csv')
+fn <- here('indata/resource.int.csv') #TODO need to update along with costs
 RI <- fread(fn)
 str(RI)
 ## correctype <- function(x) if(is.character(x[1])){ as.numeric(gsub(",","",x))} else {x}

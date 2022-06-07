@@ -1,4 +1,5 @@
 library(here)
+library(glue)
 
 LP <- glue(scan(here('graphs/petelocalpath.txt'),what="string"))
 
@@ -88,6 +89,57 @@ D04zwe <- rexel(fn,sheet=2,skip = 1)
 ## dx514
 D514zwe <- rexel(fn,sheet=3,skip = 1)
 
+## TZA NOTE this is interim data
+fn <- LP+"../JeffDatacheck/interimdata/TB Diagnosed up to 30June2020.xlsx"
+## dx014
+D014tza <- rexel(fn,sheet=1,skip = 1)[`Facility Hierarchy - Country`=='Tanzania']
+## dx04
+D04tza <- rexel(fn,sheet=2,skip = 1)[`Facility Hierarchy - Country`=='Tanzania']
+## dx514
+D514tza <- rexel(fn,sheet=3,skip = 1)[`Facility Hierarchy - Country`=='Tanzania']
+
+## TODO remove with final data
+## renaming for consistency with final data
+D04tza <- D04tza[,.(`Facility Hierarchy - Country`,
+                    `Facility Hierarchy - Facility Name`,
+                    `Num Diagnosed - Baseline 2`=`Num Diagnosed - Baseline`,
+                    `Num Months - Baseline`=`Num Diagnosed - Baseline`/
+                      `average monthly rate - Baseline`,
+                    `Baseline TB DX Monthly Rate 2`=`average monthly rate - Baseline`,
+                    `Num Diagnosed - Intervention 2`=`Num Diagnosed - Intervention`,
+                    `Num Months - Intervention`=`Num Diagnosed - Intervention`/
+                      `average monthly rate - Intervention`,
+                    `Intervention TB Diagnosed Average Monthly Rate`=`average monthly rate - Intervention`,
+                    `Fold Increase TB DX`,
+                    `% improvement`=NA)]
+D014tza <- D014tza[,.(`Facility Hierarchy - Country`,
+                    `Facility Hierarchy - Facility Name`,
+                    `Num Diagnosed - Baseline 2`=`Num Diagnosed - Baseline`,
+                    `Num Months - Baseline`=`Num Diagnosed - Baseline`/
+                      `average monthly rate - Baseline`,
+                    `Baseline TB DX Monthly Rate 2`=`average monthly rate - Baseline`,
+                    `Num Diagnosed - Intervention 2`=`Num Diagnosed - Intervention`,
+                    `Num Months - Intervention`=`Num Diagnosed - Intervention`/
+                      `average monthly rate - Intervention`,
+                    `Intervention TB Diagnosed Average Monthly Rate`=`average monthly rate - Intervention`,
+                    `Fold Increase TB DX`,
+                    `% improvement`=NA)]
+D514tza <- D514tza[,.(`Facility Hierarchy - Country`,
+                    `Facility Hierarchy - Facility Name`,
+                    `Num Diagnosed - Baseline 2`=`Num Diagnosed - Baseline`,
+                    `Num Months - Baseline`=`Num Diagnosed - Baseline`/
+                      `average monthly rate - Baseline`,
+                    `Baseline TB DX Monthly Rate 2`=`average monthly rate - Baseline`,
+                    `Num Diagnosed - Intervention 2`=`Num Diagnosed - Intervention`,
+                    `Num Months - Intervention`=`Num Diagnosed - Intervention`/
+                      `average monthly rate - Intervention`,
+                    `Intervention TB Diagnosed Average Monthly Rate`=`average monthly rate - Intervention`,
+                    `Fold Increase TB DX`,
+                    `% improvement`=NA)]
+D04tza[!is.finite(`Num Months - Baseline`),`Num Months - Baseline`:=12]
+D014tza[!is.finite(`Num Months - Baseline`),`Num Months - Baseline`:=12]
+D514tza[!is.finite(`Num Months - Baseline`),`Num Months - Baseline`:=12]
+
 ## renaming etc
 D04 <- droprename2(rbindlist(list(D04civ,
                                   D04cmr,
@@ -96,6 +148,7 @@ D04 <- droprename2(rbindlist(list(D04civ,
                                   D04lso,
                                   D04mwi,
                                   D04uga,
+                                  D04tza,
                                   D04zwe)))
 D014 <- droprename2(rbindlist(list(D014civ,
                                   D014cmr,
@@ -104,6 +157,7 @@ D014 <- droprename2(rbindlist(list(D014civ,
                                   D014lso,
                                   D014mwi,
                                   D014uga,
+                                  D014tza,
                                   D014zwe)))
 D514 <- droprename2(rbindlist(list(D514civ,
                                    D514cmr,
@@ -112,6 +166,7 @@ D514 <- droprename2(rbindlist(list(D514civ,
                                    D514lso,
                                    D514mwi,
                                    D514uga,
+                                   D514tza,
                                    D514zwe)))
 
 ## drop the prescribed missing data facilities
@@ -212,8 +267,59 @@ T04zwe <- rexel(fn,sheet=2,skip = 1)
 ## dx514
 T514zwe <- rexel(fn,sheet=3,skip = 1)
 
+## TZA NOTE interim data
+fn <- LP+"../JeffDatacheck/interimdata/TB TX Initiation up to 30June2020.xlsx"
+## dx014
+T014tza <- rexel(fn,sheet=1,skip = 1)[`Facility Hierarchy - Country`=='Tanzania']
+## dx04
+T04tza <- rexel(fn,sheet=2,skip = 1)[`Facility Hierarchy - Country`=='Tanzania']
+## dx514
+T514tza <- rexel(fn,sheet=3,skip = 1)[`Facility Hierarchy - Country`=='Tanzania']
+
+## TODO remove with final data
+## renaming for consistency with final data
+T04tza <- T04tza[,.(`Facility Hierarchy - Country`,
+                    `Facility Hierarchy - Facility Name`,
+                    `Num TB TX Initiated - Baseline`,
+                    `Num Months - Baseline`=`Num TB TX Initiated - Baseline`/
+                      `Baseline TB TX Init Average Monthly Rate`,
+                    `Baseline TB TX Init Average Monthly Rate`=`Baseline TB TX Init Average Monthly Rate`,
+                    `Num TB TX Initiated - Intervention`,
+                    `Num Months - Intervention`=`Num TB TX Initiated - Intervention`/
+                      `Intervention TB Tx Init Average monthly rate`,
+                    `Intervention TB TX Init Average Monthly Rate`=
+                      `Intervention TB Tx Init Average monthly rate`,
+                    `Fold Increase TB TX Init`)]
+T014tza <- T014tza[,.(`Facility Hierarchy - Country`,
+                      `Facility Hierarchy - Facility Name`,
+                      `Num TB TX Initiated - Baseline`,
+                      `Num Months - Baseline`=`Num TB TX Initiated - Baseline`/
+                        `Baseline TB TX Init Average Monthly Rate`,
+                      `Baseline TB TX Init Average Monthly Rate`=`Baseline TB TX Init Average Monthly Rate`,
+                      `Num TB TX Initiated - Intervention`,
+                      `Num Months - Intervention`=`Num TB TX Initiated - Intervention`/
+                        `Intervention TB Tx Init Average monthly rate`,
+                      `Intervention TB TX Init Average Monthly Rate`=
+                        `Intervention TB Tx Init Average monthly rate`,
+                      `Fold Increase TB TX Init`)]
+T514tza <- T514tza[,.(`Facility Hierarchy - Country`,
+                      `Facility Hierarchy - Facility Name`,
+                      `Num TB TX Initiated - Baseline`,
+                      `Num Months - Baseline`=`Num TB TX Initiated - Baseline`/
+                        `Baseline TB TX Init Average Monthly Rate`,
+                      `Baseline TB TX Init Average Monthly Rate`=`Baseline TB TX Init Average Monthly Rate`,
+                      `Num TB TX Initiated - Intervention`,
+                      `Num Months - Intervention`=`Num TB TX Initiated - Intervention`/
+                        `Intervention TB Tx Init Average monthly rate`,
+                      `Intervention TB TX Init Average Monthly Rate`=
+                        `Intervention TB Tx Init Average monthly rate`,
+                      `Fold Increase TB TX Init`)]
+T04tza[!is.finite(`Num Months - Baseline`),`Num Months - Baseline`:=12]
+T014tza[!is.finite(`Num Months - Baseline`),`Num Months - Baseline`:=12]
+T514tza[!is.finite(`Num Months - Baseline`),`Num Months - Baseline`:=12]
+
 names(T04drc); names(T04civ); names(T04mwi); names(T04uga)
-names(T04cmr); names(T04lso); names(T04ken);
+names(T04cmr); names(T04lso); names(T04ken); names(T04tza);
 
 ## fix needed
 T04drc[,`% improvement`:=NULL]
@@ -223,16 +329,36 @@ T04uga[,`% improvement`:=NULL]
 T04cmr[,`% improvement`:=NULL]
 T04lso[,`% improvement`:=NULL]
 T04ken[,`% improvement`:=NULL]
+T04civ[,`% improvement`:=NULL]
+## NOTE may need for TZA when using final data
+T514drc[,`% improvement`:=NULL]
+T514mwi[,`% improvement`:=NULL]
+T514zwe[,`% improvement`:=NULL]
+T514uga[,`% improvement`:=NULL]
+T514cmr[,`% improvement`:=NULL]
+T514lso[,`% improvement`:=NULL]
+T514ken[,`% improvement`:=NULL]
+T514civ[,`% improvement`:=NULL]
+## last age gp
+T014drc[,`% improvement`:=NULL]
+T014mwi[,`% improvement`:=NULL]
+T014zwe[,`% improvement`:=NULL]
+T014uga[,`% improvement`:=NULL]
+T014cmr[,`% improvement`:=NULL]
+T014lso[,`% improvement`:=NULL]
+T014ken[,`% improvement`:=NULL]
+T014civ[,`% improvement`:=NULL]
 
 ## renaming etc
 T04 <- droprename2(rbindlist(list(T04civ,
-                                   T04cmr,
-                                   T04drc,
-                                   T04ken,
-                                   T04lso,
-                                   T04mwi,
-                                   T04uga,
-                                   T04zwe)))
+                                  T04cmr,
+                                  T04drc,
+                                  T04ken,
+                                  T04lso,
+                                  T04mwi,
+                                  T04uga,
+                                  T04tza,
+                                  T04zwe)))
 T514 <- droprename2(rbindlist(list(T514civ,
                                    T514cmr,
                                    T514drc,
@@ -240,6 +366,7 @@ T514 <- droprename2(rbindlist(list(T514civ,
                                    T514lso,
                                    T514mwi,
                                    T514uga,
+                                   T514tza,
                                    T514zwe)))
 T014 <- droprename2(rbindlist(list(T014civ,
                                    T014cmr,
@@ -248,6 +375,7 @@ T014 <- droprename2(rbindlist(list(T014civ,
                                    T014lso,
                                    T014mwi,
                                    T014uga,
+                                   T014tza,
                                    T014zwe)))
 
 ## drop the prescribed missing data facilities
@@ -347,15 +475,73 @@ P04zwe <- rexel(fn,sheet=2,skip = 1)
 ## dx514
 P514zwe <- rexel(fn,sheet=3,skip = 1)
 
+## TZA NOTE interim data
+fn <- LP+"../JeffDatacheck/interimdata/TPT Initiation up to 30June2020.xlsx"
+## dx014
+P014tza <- rexel(fn,sheet=1,skip = 1)[`Facility Hierarchy - Country`=='Tanzania']
+## dx04
+P04tza <- rexel(fn,sheet=2,skip = 1)[`Facility Hierarchy - Country`=='Tanzania']
+## dx514
+P514tza <- rexel(fn,sheet=3,skip = 1)[`Facility Hierarchy - Country`=='Tanzania']
+
+## TODO remove with final data
+## renaming for consistency with final data
+P04tza <- P04tza[,.(`Facility Hierarchy - Country`,
+                    `Facility Hierarchy - Facility Name`,
+                    `Num PT Initiated - Baseline`,
+                    `Num Months - Baseline`=`Num PT Initiated - Baseline`/
+                      `average monthly rate - Baseline`,
+                    `Baseline PT Init Average Monthly Rate`=
+                      `average monthly rate - Baseline`,
+                    `Num PT Initiated - Intervention`,
+                    `Num Months - Intervention`=`Num PT Initiated - Intervention`/
+                      `average monthly rate - Intervention`,
+                    `Intervention PT Init Average Monthly Rate`=
+                      `average monthly rate - Intervention`,
+                    `Fold Increase PT Init`,
+                    `% improvement`=`Pct Improvement`)]
+P014tza <- P014tza[,.(`Facility Hierarchy - Country`,
+                      `Facility Hierarchy - Facility Name`,
+                      `Num PT Initiated - Baseline`,
+                      `Num Months - Baseline`=`Num PT Initiated - Baseline`/
+                        `average monthly rate - Baseline`,
+                      `Baseline PT Init Average Monthly Rate`=
+                        `average monthly rate - Baseline`,
+                      `Num PT Initiated - Intervention`,
+                      `Num Months - Intervention`=`Num PT Initiated - Intervention`/
+                        `average monthly rate - Intervention`,
+                      `Intervention PT Init Average Monthly Rate`=
+                        `average monthly rate - Intervention`,
+                      `Fold Increase PT Init`,
+                      `% improvement`=`Pct Improvement`)]
+P514tza <- P514tza[,.(`Facility Hierarchy - Country`,
+                      `Facility Hierarchy - Facility Name`,
+                      `Num PT Initiated - Baseline`,
+                      `Num Months - Baseline`=`Num PT Initiated - Baseline`/
+                        `average monthly rate - Baseline`,
+                      `Baseline PT Init Average Monthly Rate`=
+                        `average monthly rate - Baseline`,
+                      `Num PT Initiated - Intervention`,
+                      `Num Months - Intervention`=`Num PT Initiated - Intervention`/
+                        `average monthly rate - Intervention`,
+                      `Intervention PT Init Average Monthly Rate`=
+                        `average monthly rate - Intervention`,
+                      `Fold Increase PT Init`,
+                      `% improvement`=`Pct Improvement`)]
+P04tza[!is.finite(`Num Months - Baseline`),`Num Months - Baseline`:=12]
+P014tza[!is.finite(`Num Months - Baseline`),`Num Months - Baseline`:=12]
+P514tza[!is.finite(`Num Months - Baseline`),`Num Months - Baseline`:=12]
+
 ## renaming etc
 P04 <- droprename2(rbindlist(list(P04civ,
-                                   P04cmr,
-                                   P04drc,
-                                   P04ken,
-                                   P04lso,
-                                   P04mwi,
-                                   P04uga,
-                                   P04zwe)))
+                                  P04cmr,
+                                  P04drc,
+                                  P04ken,
+                                  P04lso,
+                                  P04mwi,
+                                  P04uga,
+                                  P04tza,
+                                  P04zwe)))
 P514 <- droprename2(rbindlist(list(P514civ,
                                    P514cmr,
                                    P514drc,
@@ -363,6 +549,7 @@ P514 <- droprename2(rbindlist(list(P514civ,
                                    P514lso,
                                    P514mwi,
                                    P514uga,
+                                   P514tza,
                                    P514zwe)))
 P014 <- droprename2(rbindlist(list(P014civ,
                                    P014cmr,
@@ -371,6 +558,7 @@ P014 <- droprename2(rbindlist(list(P014civ,
                                    P014lso,
                                    P014mwi,
                                    P014uga,
+                                   P014tza,
                                    P014zwe)))
 
 ## drop the prescribed missing data facilities

@@ -13,14 +13,13 @@ ssum <- function(x) sqrt(sum(x^2))
 gh <- function(x) glue(here(x))
 
 set.seed(1234)
+cns <- c("Cameroon","Cote d'Ivoire","DRC","Kenya",
+         "Lesotho","Malawi","Uganda","Tanzania","Zimbabwe")
+cnisos <- c('CMR','CIV','COD','KEN','LSO','MWI','TZA','UGA','ZWE')
+
 
 ## ===== COUNTRY KEY
 ## NOTE if inference hasn't been run, skip to SKIP below and load files before continuing
-load(gh('../inference/outdata/bsmy_px_014.Rdata'))
-(cns <- bsmy[,country])
-## cnisos <- c('CMR','CIV','COD','KEN','LSO','MWI','TZA','UGA','ZWE')
-cnisos <- c('CMR','CIV','COD','KEN','LSO','MWI','TZA','UGA','ZWE')
-
 countrykey <- data.table(iso3=cnisos,country=cns)
 setkey(countrykey,iso3)
 countrykey
@@ -187,7 +186,7 @@ fn <- here('indata/blextract2.csv')
 B2 <- fread(fn)
 ## cascades & resources during intervention
 ## - from 'cascade data for Nyasha' spreadsheet
-fn <- here('indata/resource.int.csv') #TODO need to update along with costs
+fn <- here('indata/resource.int.csv')
 RI <- fread(fn)
 str(RI)
 ## correctype <- function(x) if(is.character(x[1])){ as.numeric(gsub(",","",x))} else {x}
@@ -228,8 +227,8 @@ ATT <- RIM[metric %in% attv]
 atv <- RIM[1:5,metric]
 ATT$metric <- factor(ATT$metric,levels=atv,ordered = TRUE)
 
-ATT <- ATT[country %in% cns] #restrict
-PTT <- PTT[country %in% cns] #restrict
+## ATT <- ATT[country %in% cns] #restrict
+## PTT <- PTT[country %in% cns] #restrict
 
 ## NOTE setting CIV to no HIV-entry point PT? TODO check
 PTT[is.na(value),value:=0]
@@ -317,13 +316,13 @@ load(file=here('data/ATR.Rdata')) #cascade
 
 
 ## output cascade data: costs
-CD <- fread(here('indata/unit_costs_updated_2022-01-26.csv')) #unit_costs_revised_22102021.csv
+CD <- fread(here('indata/unit_costs_updated_2022-05-25.csv'))
 CD[,iso3:=gsub('DRC','COD',Country)]
 CD[,iso3:=gsub('CDI','CIV',iso3)]
 CD[,V1:=NULL]
 save(CD,file=here('data/CD.Rdata')) #cascade
 
-load(file=here('data/CD.Rdata')) #cascade TODO update from here
+load(file=here('data/CD.Rdata')) #cascade
 ## mapping costs to activities
 CD[,metric:=Activity]
 CD[,unique(Activity)]
@@ -354,6 +353,12 @@ SBEPm[,total:=sum(value),by=iso3]
 SBEPm[,epfrac:=value/total] #entry-point fraction for screening
 SBEPm[,sum(epfrac),by=iso3] #check
 
+## TODO for now using average for TZA
+SBEPav <- SBEPm[,.(epfrac=mean(epfrac)),by=variable]
+SBEPav[,c('iso3','value','total'):=.('TZA',NA,NA)]
+
+SBEPm <- rbind(SBEPm,SBEPav,use.names = TRUE)
+
 ## merge cateogries
 SBEPm[variable=='CBhhcm',Activity:='Community hhci']
 SBEPm[variable=='FBhhcm',Activity:='Facility hhci']
@@ -361,8 +366,8 @@ SBEPm[variable=='HIVicf',Activity:='Screening in HIV clinic']
 SBEPm[variable=='nonHIVicf',Activity:='Screening in non-HIV clinic']
 
 
-## NOTE TODO LSO omitted for now
-SBEPm <- SBEPm[iso3!='LSO']
+## ## NOTE TODO LSO omitted for now
+## SBEPm <- SBEPm[iso3!='LSO']
 
 ## do merge, add epfrac =1 for rest
 CD <- merge(CD,SBEPm[,.(iso3,Activity,epfrac)],
@@ -389,7 +394,7 @@ CD[Activity=='TPT treatment',
 
 ## NOTE these are not in below and dropped from cascade merge
 ## OK for sample collection which is already buily into Xpert testing
-## TODO build X-ray costs in
+## TODO build X-ray costs in (see row in resource.int.csv)
 
 CD[Activity=='Sample collection',
    metric:="Sample collection"]
@@ -403,7 +408,7 @@ unique(CD[,.(Activity,metric)]) #check
 CD[is.na(uc.soc.sd),uc.soc.sd:=0]
 CD[is.na(uc.int.sd),uc.int.sd:=0]
 
-
+## summing means and sqrtsumsqr for sd
 CD <- CD[,.(uc.soc=sum(uc.soc*epfrac),uc.soc.sd=ssum(uc.soc.sd*epfrac),
             uc.int=sum(uc.int*epfrac),uc.int.sd=ssum(uc.int.sd*epfrac)
             ), by=.(iso3,metric)]
@@ -511,7 +516,6 @@ ART2 <- merge(ART2,DBC,by=c('iso3','metric'),all.x=TRUE)
 ART2[,c('country','Baseline','Intervention'):=NULL]
 ART2[is.na(ratio),ratio:=1.0]
 
-## TODO CMR/LSO issue
 ## merge and compute both sets of costs
 xtra <- ART2[,.(cost.soc=sum(uc.soc*frac/ratio),
                 cost.soc.sd=ssum(frac*uc.soc.sd/ratio),
@@ -749,7 +753,7 @@ CET[,`3x GDP`:=as.numeric(gsub(",","",`3x GDP`))]
 CETM <- CET[,.(iso3=Country,`1x GDP`,`3x GDP`,Y1a,Y1b,Y2a,Y2b)]
 CETM <- melt(CETM,id='iso3')
 CETM[,value:=as.numeric(value)]
-CETM <- merge(CETM,CK,by='iso3')
+CETM <- merge(CETM,countrykey,by='iso3')
 names(CETM)[2] <- 'threshold'
 tmp <- CETM[threshold=='1x GDP'] #add in 1/2 GDP as in Chi Vassall
 tmp[,value:=value/2]
@@ -831,6 +835,9 @@ setcolorder(tmp1,names(Table1PT))
 
 ## HHCM community based*; *=calculated on screens
 tmp2 <- SBEP[,.(country, 1e2*CBhhcm/(CBhhcm+FBhhcm))]
+## TODO fill in TZA NAs for now
+tmp2 <- rbind(tmp2,data.table(country='Tanzania',V2=NA))
+
 tmp2[country=='CDI',country:="Cote d'Ivoire"]
 tmp2 <- transpose(tmp2,make.names = TRUE)
 tmp2[,c('condition','variable'):=.('PT','HHCM community-based')]
@@ -839,14 +846,14 @@ setcolorder(tmp2,names(Table1PT))
 rqty <- c("Number of Index cases with contact tracing done",
           "PT initiation among contacts")
 ## Started on PT
-tmp3 <- RIM[metric %in% rqty[2] & country !='Tanzania',.(country,value)]
+tmp3 <- RIM[metric %in% rqty[2],.(country,value)]
 tmp3 <- transpose(tmp3,make.names = TRUE)
 tmp3[,c('condition','variable'):=.('PT',rqty[2])]
 setcolorder(tmp3,names(Table1PT))
 
 
 ## Households screened
-tmp4 <- RIM[metric %in% rqty[1] & country !='Tanzania',.(country,value)]
+tmp4 <- RIM[metric %in% rqty[1],.(country,value)]
 tmp4 <- transpose(tmp4,make.names = TRUE)
 tmp4[,c('condition','variable'):=.('PT',rqty[1])]
 setcolorder(tmp4,names(Table1PT))
@@ -854,6 +861,9 @@ setcolorder(tmp4,names(Table1PT))
 
 ## Children screened
 tmp5 <- SBEP[,.(country, (CBhhcm+FBhhcm))]
+## TODO fill in TZA NAs for now
+tmp5 <- rbind(tmp5,data.table(country='Tanzania',V2=NA))
+
 tmp5[country=='CDI',country:="Cote d'Ivoire"]
 tmp5 <- transpose(tmp5,make.names = TRUE)
 tmp5[,c('condition','variable'):=.('PT','Child HH contacts screened')]
@@ -868,17 +878,23 @@ setcolorder(tmp5,names(Table1PT))
 tmpr <- B2[metric %in%
            c('Number of Index cases with contact tracing done',
              'Presumptive TB identified','Diagnosed with TB')]
-tmpr[,perHH:=total/tmpr[metric=='Number of Index cases with contact tracing done',total]]
+tmpr[,perHH:=total/
+        tmpr[metric=='Number of Index cases with contact tracing done',
+             total]]
 
 
 tmps <- SBEP[,.(country, kids=(CBhhcm+FBhhcm))]
+## TODO fill in TZA NAs for now
+tmps <- rbind(tmps,data.table(country='Tanzania',kids=NA))
+
+
 tmps[country=='CDI',country:="Cote d'Ivoire"]
 kidsperhh <- merge(tmps,
-                   RIM[metric %in% rqty[1] & country !='Tanzania',.(country,nhh=value)],
+                   RIM[metric %in% rqty[1],.(country,nhh=value)],
                    by='country')
 kidsperhh[,kidsphh:=kids/nhh]
-kidsperhh[,tb:=nhh*tmpr[metric=='Diagnosed with TB',ratio]]
-kidsperhh[,pr:=nhh*tmpr[metric=='Presumptive TB identified',ratio]]
+kidsperhh[,tb:=nhh*tmpr[metric=='Diagnosed with TB',perHH]]
+kidsperhh[,pr:=nhh*tmpr[metric=='Presumptive TB identified',perHH]]
 kidsperhh[,c('tbperkid','prperkid'):=.(tb/kids,pr/kids)]
 
 tmp6 <- transpose(kidsperhh[,.(country,pr)],make.names = TRUE)

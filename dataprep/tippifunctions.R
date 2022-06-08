@@ -156,9 +156,11 @@ make.ceac <- function(CEA,lamz){
 make.ceac.plot <- function(D,thresholds=NULL,xpad=0){
     ## cols
     cbPalette0 <- c("#999999", "#E69F00", "#56B4E9", "#009E73",
-                   "#F0E442", "#0072B2", "#D55E00", "#CC79A7")
+                    "#F0E442", "#0072B2", "#D55E00", "#CC79A7",
+                    "darkorchid1")
     cbPalette <- c("#999999", "#E69F00", "#56B4E9","#009E73",
-                   "#F0E442", "#0072B2","#D55E00", "#CC79A7")
+                   "#F0E442", "#0072B2","#D55E00", "#CC79A7",
+                   "darkorchid1")
     ## plot
     GP <- ggplot(D,aes(x,y,col=iso3)) +
         geom_line() +

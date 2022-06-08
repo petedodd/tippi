@@ -249,11 +249,14 @@ T[,Dcost:=costt.int-costt.soc]
 ## HIV prevalence from BL data
 H <- BL[country %in% CK$country,.(country,hiva=hiv,Tbdx)]
 H <- H[rep(1:nrow(H),each=max(PSA$id))]
-H[,id:=rep(1:max(PSA$id),nrow(CK))]
+H[,id:=rep(1:max(PSA$id),nrow(CK)-1)] #TODO missing TZA
 H <- rbind(H,H)
 H[,age:=rep(c('0-4','5-14'),each=nrow(H)/2)]
 H[,hiv:=rbeta(nrow(H),hiva,Tbdx)]
 H <- H[,.(id,country,age,hiv)]
+## fill TODO mean for TZA
+tmp <- H[,.(country='Tanzania',hiv=mean(hiv)),by=.(id,age)]
+H <- rbind(H,tmp)
 H <- merge(H,CK,by='country')
 
 ## merge in HIV prevalence
@@ -394,7 +397,7 @@ ggsave(CEAC,file=fn1,w=7,h=7); ## ggsave(CEAC,file=fn2,w=7,h=7)
 
 
 ## output where things X 50%
-tmp <- ceacd[abs(y-0.5)<1e-2] #NOTE may need tuning if sample changes
+tmp <- ceacd[y>0.5 & abs(y-0.5)<5e-2]
 tmp[,err:=abs(y-0.5)]
 tmp[,ermin:=min(err),by=iso3]
 tmp <- tmp[err==ermin]
@@ -788,11 +791,6 @@ CDlong[,intu:=socu + uc.int] #NOTE intu aren't incremental now
 CDlong <- CDlong[,.(iso3,Activity,id,socu,intu)] #restrict
 CDlong <- dcast(CDlong,iso3+id~Activity,value.var=c('socu','intu'))#shape
 
-## TODO atm no unit costs for LSO
-tmp <- CDlong[iso3=='MWI']
-tmp[,iso3:='LSO']
-CDlong <- rbind(CDlong,tmp)
-
 ## merges cost data into activity data
 PT <- merge(PT,CDlong,by=c('iso3','id'),all.x=TRUE)    #costs
 
@@ -802,7 +800,12 @@ SBEP[,.(iso3,CBhhcm,FBhhcm)] # raw numbers
 CvF <- SBEP[rep(1:nrow(SBEP),each=max(PT$id)),.(iso3,CBhhcm,FBhhcm)]
 CvF[,id:=rep(1:max(PT$id),nrow(SBEP))]
 CvF[,propFB:=rbeta(nrow(CvF),shape1=FBhhcm,shape2=CBhhcm)] #use numbers in beta dist
-PT <- merge(PT,CvF[,.(iso3,id,propFB)],by=c('iso3','id'))
+
+## TODO TZA not here
+tmp <- CvF[,.(iso3='TZA',propFB=mean(propFB)),by=id]
+CvF <- rbind(CvF[,.(iso3,id,propFB)],tmp)
+
+PT <- merge(PT,CvF,by=c('iso3','id'))
 
 ## traceperhhcpt - is households screened per PT init
 ## (check same as hhci)
@@ -1054,7 +1057,7 @@ ggsave(PCEAC,file=fn1,w=10,h=10); ## ggsave(PCEAC,file=fn2,w=10,h=10)
 
 
 ## output where things X 50%
-tmp <- pceacd[abs(y-0.5)<5e-2] #NOTE may need tuning if sample changes
+tmp <- pceacd[y>0.5 & abs(y-0.5)<5e-2] #NOTE may need tuning if sample changes
 tmp[,err:=abs(y-0.5)]
 tmp[,ermin:=min(err),by=iso3]
 tmp <- tmp[err==ermin]
@@ -1230,6 +1233,7 @@ fwrite(picers,file=fn)
 
 ## TODO cross check cost SOC PT - seems different
 
+PTT[,unique(iso3)]
 
 ## ================= BOTH components ============================
 ## want weighting during baseline
@@ -1237,10 +1241,8 @@ PTT <- merge(T1[,.(country,iso3,id,Dcost.att=Dcost,dDALY.att=dDALY)],
              PT1[,.(country,iso3,id,Dcost.pt=Dcost,dDALY.pt=dDALY)],
              by=c('country','iso3','id'))
 PTT <- merge(PTT,BC[,.(country=Country,BR)],by='country') #weight
-
 PTT[,Dcost:=Dcost.att*BR/(1+BR) + Dcost.pt*1/(1+BR)] #weighted costs
 PTT[,dDALY:=dDALY.att*BR/(1+BR) + dDALY.pt*1/(1+BR)] #weighted DALYs
-
 
 ## CEA plot
 GP <- ggplot(PTT,aes(dDALY,Dcost)) +
@@ -1297,7 +1299,6 @@ fwrite(icebrr,file=fn)
 PTT
 
 ## --- make a larger set of outputs from both components, and weight appropriately
-## jj
 A <- T1[,.(country,iso3,id,
            cost.soc.ATT=cost.soc,
            cost.int.ATT=cost.int,
@@ -1392,7 +1393,6 @@ save(Table2both,file=fn)
 
 
 ## ================= TODO list ============================
-## check BR
 ## check X-ray costing
 
 ## NOTE

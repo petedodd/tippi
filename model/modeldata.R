@@ -772,15 +772,23 @@ P <- fread(here('../dataprep/outdata/P.csv'))
 
 
 ## BC rate ratios
-TC <- T[,.(ATT.Baseline.Num=sum(Baseline.Num),ATT.Intervention.Num=sum(Intervention.Num),
-          Baseline.FT=sum(Baseline.FT),Intervention.FT=sum(Intervention.FT)),by=.(Country)]
-PC <- P[,.(PT.Baseline.Num=sum(Baseline.Num),PT.Intervention.Num=sum(Intervention.Num),
-          Baseline.FT=sum(Baseline.FT),Intervention.FT=sum(Intervention.FT)),by=.(Country)]
-TC[,ATT.Baseline.Rate:=ATT.Baseline.Num/Baseline.FT]; TC[,ATT.Intervention.Rate:=ATT.Intervention.Num/Intervention.FT];
-PC[,PT.Baseline.Rate:=PT.Baseline.Num/Baseline.FT]; PC[,PT.Intervention.Rate:=PT.Intervention.Num/Intervention.FT];
+TC <- T[,.(ATT.Baseline.Num=sum(Baseline.Num),
+           ATT.Intervention.Num=sum(Intervention.Num),
+           Baseline.FT=sum(Baseline.FT),
+           Intervention.FT=sum(Intervention.FT)),by=.(Country)]
+PC <- P[,.(PT.Baseline.Num=sum(Baseline.Num),
+           PT.Intervention.Num=sum(Intervention.Num),
+           Baseline.FT=sum(Baseline.FT),
+           Intervention.FT=sum(Intervention.FT)),by=.(Country)]
+TC[,ATT.Baseline.Rate:=ATT.Baseline.Num/Baseline.FT];
+TC[,ATT.Intervention.Rate:=ATT.Intervention.Num/Intervention.FT];
+PC[,PT.Baseline.Rate:=PT.Baseline.Num/Baseline.FT];
+PC[,PT.Intervention.Rate:=PT.Intervention.Num/Intervention.FT];
 
-BC <- merge(TC[,.(Country,ATT.Baseline.Num,ATT.Intervention.Num,ATT.Baseline.Rate,ATT.Intervention.Rate)],
-            PC[,.(Country,PT.Baseline.Num,PT.Intervention.Num,PT.Baseline.Rate,PT.Intervention.Rate)],
+BC <- merge(TC[,.(Country,ATT.Baseline.Num,ATT.Intervention.Num,
+                  ATT.Baseline.Rate,ATT.Intervention.Rate)],
+            PC[,.(Country,PT.Baseline.Num,PT.Intervention.Num,
+                  PT.Baseline.Rate,PT.Intervention.Rate)],
             by='Country'
             )
 
@@ -793,9 +801,12 @@ save(BC,file=here('data/BC.Rdata'))
 
 
 ## ASM age splits
-(P <- P[,.(Baseline=sum(Baseline.Num),Intervention=sum(Intervention.Num)),by=.(Country,age)])
-(D <- D[,.(Baseline=sum(Baseline.Num),Intervention=sum(Intervention.Num)),by=.(Country,age)])
-(T <- T[,.(Baseline=sum(Baseline.Num),Intervention=sum(Intervention.Num)),by=.(Country,age)])
+(P <- P[,.(Baseline=sum(Baseline.Num),
+           Intervention=sum(Intervention.Num)),by=.(Country,age)])
+(D <- D[,.(Baseline=sum(Baseline.Num),
+           Intervention=sum(Intervention.Num)),by=.(Country,age)])
+(T <- T[,.(Baseline=sum(Baseline.Num),
+           Intervention=sum(Intervention.Num)),by=.(Country,age)])
 
 P[,qty:='pt']
 D[,qty:='dx']

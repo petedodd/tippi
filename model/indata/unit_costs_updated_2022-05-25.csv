@@ -1,0 +1,91 @@
+"","Country","Activity","uc.soc","uc.soc.sd","uc.int","uc.int.sd"
+"1","CMR","Community hhci",0,NA,11.3,NA
+"2","CMR","Facility hhci",5.03,2.207,42.38,NA
+"3","CMR","Screening in HIV clinic",5.03,2.207,0.17,NA
+"4","CMR","Screening in non-HIV clinic",5.03,2.207,0.3,NA
+"5","CMR","Presumptive TB evaluation",5.03,2.207,31.93,NA
+"6","CMR","Sample collection",1.36,0.005,56.7,NA
+"7","CMR","Xpert testing",27.44,13.373,47.62,NA
+"8","CMR","Chest x-ray",7.35,0.73,3.02,NA
+"9","CMR","TB treatment",110.32,52.109,158.56,NA
+"10","CMR","TPT treatment",34.43,15.688,27.73,NA
+"11","CDI","Community hhci",0,NA,62.12,NA
+"12","CDI","Facility hhci",3.52,1.507,69.48,NA
+"13","CDI","Screening in HIV clinic",3.52,1.507,0,NA
+"14","CDI","Screening in non-HIV clinic",3.52,1.507,0.22,NA
+"15","CDI","Presumptive TB evaluation",3.52,1.507,38.02,NA
+"16","CDI","Sample collection",1.29,0.005,81.55,NA
+"17","CDI","Xpert testing",26.01,12.674,40,NA
+"18","CDI","Chest x-ray",6.97,0.692,10.53,NA
+"19","CDI","TB treatment",95.25,45.107,130.42,NA
+"20","CDI","TPT treatment",26.89,12.186,46.44,NA
+"21","DRC","Community hhci",0,NA,30.51,NA
+"22","DRC","Facility hhci",1.54,0.622,2.16,NA
+"23","DRC","Screening in HIV clinic",1.54,0.622,0.02,NA
+"24","DRC","Screening in non-HIV clinic",1.54,0.622,0.07,NA
+"25","DRC","Presumptive TB evaluation",1.54,0.622,0.16,NA
+"26","DRC","Sample collection",1.65,0.006,79.96,NA
+"27","DRC","Xpert testing",33.24,16.197,20.65,NA
+"28","DRC","Chest x-ray",8.9,0.884,0.2,NA
+"29","DRC","TB treatment",75.49,36.258,3.59,NA
+"30","DRC","TPT treatment",17.01,7.762,35.33,NA
+"31","KEN","Community hhci",0,NA,94.56,NA
+"32","KEN","Facility hhci",4.13,1.791,54.16,NA
+"33","KEN","Screening in HIV clinic",4.13,1.791,3.17,NA
+"34","KEN","Screening in non-HIV clinic",4.13,1.791,1.2,NA
+"35","KEN","Presumptive TB evaluation",4.13,1.791,0,NA
+"36","KEN","Sample collection",1.31,0.005,69.4,NA
+"37","KEN","Xpert testing",26.36,12.847,0.33,NA
+"38","KEN","Chest x-ray",7.06,0.701,0.33,NA
+"39","KEN","TB treatment",101.41,47.948,13.66,NA
+"40","KEN","TPT treatment",29.97,13.607,3.41,NA
+"41","LSO","Community hhci",0,NA,28.3,NA
+"42","LSO","Facility hhci",2.72,1.143,9.3,NA
+"43","LSO","Screening in HIV clinic",2.72,1.143,1.5,NA
+"44","LSO","Screening in non-HIV clinic",2.72,1.143,8.61,NA
+"45","LSO","Presumptive TB evaluation",2.72,1.143,28.87,NA
+"46","LSO","Sample collection",1.29,0.005,138.91,NA
+"47","LSO","Xpert testing",25.98,12.661,33.2,NA
+"48","LSO","Chest x-ray",6.96,0.691,0.86,NA
+"49","LSO","TB treatment",87.24,41.462,343.39,NA
+"50","LSO","TPT treatment",22.89,10.364,25.08,NA
+"51","MWI","Community hhci",0,NA,111.91,NA
+"52","MWI","Facility hhci",1.14,0.452,56.72,NA
+"53","MWI","Screening in HIV clinic",1.14,0.452,0.13,NA
+"54","MWI","Screening in non-HIV clinic",1.14,0.452,0.62,NA
+"55","MWI","Presumptive TB evaluation",1.14,0.452,9.26,NA
+"56","MWI","Sample collection",1.21,0.005,100.84,NA
+"57","MWI","Xpert testing",24.41,11.892,14.34,NA
+"58","MWI","Chest x-ray",6.54,0.649,0.15,NA
+"59","MWI","TB treatment",71.52,34.555,13.3,NA
+"60","MWI","TPT treatment",15.02,6.91,8.19,NA
+"61","TZA","Community hhci",0,NA,44.71,NA
+"62","TZA","Facility hhci",2.73,1.146,28.48,NA
+"63","TZA","Screening in HIV clinic",2.73,1.146,0,NA
+"64","TZA","Screening in non-HIV clinic",2.73,1.146,0.79,NA
+"65","TZA","Presumptive TB evaluation",2.73,1.146,14.58,NA
+"66","TZA","Sample collection",1.31,0.005,209.44,NA
+"67","TZA","Xpert testing",26.51,12.916,110.08,NA
+"68","TZA","Chest x-ray",7.1,0.705,0.89,NA
+"69","TZA","TB treatment",87.33,41.5,10.54,NA
+"70","TZA","TPT treatment",22.93,10.383,4.3,NA
+"71","UGA","Community hhci",0,NA,231.56,NA
+"72","UGA","Facility hhci",2.02,0.832,0,NA
+"73","UGA","Screening in HIV clinic",2.02,0.832,0.01,NA
+"74","UGA","Screening in non-HIV clinic",2.02,0.832,0.96,NA
+"75","UGA","Presumptive TB evaluation",2.02,0.832,30.29,NA
+"76","UGA","Sample collection",1.13,0.004,55.21,NA
+"77","UGA","Xpert testing",22.82,11.12,22.71,NA
+"78","UGA","Chest x-ray",6.11,0.607,0.14,NA
+"79","UGA","TB treatment",80.29,38.357,62.76,NA
+"80","UGA","TPT treatment",19.41,8.812,26.66,NA
+"81","ZWE","Community hhci",0,NA,399.61,NA
+"82","ZWE","Facility hhci",3.43,1.467,230.35,NA
+"83","ZWE","Screening in HIV clinic",3.43,1.467,0,NA
+"84","ZWE","Screening in non-HIV clinic",3.43,1.467,0,NA
+"85","ZWE","Presumptive TB evaluation",3.43,1.467,53.1,NA
+"86","ZWE","Sample collection",1.61,0.006,112.5,NA
+"87","ZWE","Xpert testing",32.44,15.808,12.03,NA
+"88","ZWE","Chest x-ray",8.69,0.863,0,NA
+"89","ZWE","TB treatment",94.37,44.704,518.36,NA
+"90","ZWE","TPT treatment",26.45,11.985,58.3,NA

@@ -394,7 +394,6 @@ CD[Activity=='TPT treatment',
 
 ## NOTE these are not in below and dropped from cascade merge
 ## OK for sample collection which is already buily into Xpert testing
-## TODO build X-ray costs in (see row in resource.int.csv)
 
 CD[Activity=='Sample collection',
    metric:="Sample collection"]
@@ -403,6 +402,33 @@ CD[Activity=='Chest x-ray',
    metric:="Chest x-ray"]
 
 unique(CD[,.(Activity,metric)]) #check
+
+## NOTE need to change this column type to NA real from logical
+CD[,uc.int.sd:=NULL]
+CD[,uc.int.sd:=NA_real_]
+
+## --- build X-ray costs in (see row in resource.int.csv) ---
+RIM[metric=='CXRamongclindx'] #NOTE this is among presumptives, but the denominator is really those bac-ve
+## this means that as a pc applied to /all/ TB it is likely an overestimate (and conservative for CEA)
+
+tmp <- CD[metric=='Chest x-ray']
+tmp <- merge(tmp,countrykey,by='iso3')
+tmp <- merge(tmp,RIM[metric=='CXRamongclindx',.(country,value)],by='country')
+## multiply X-ray cost by proportion of time used
+tmp[,c('E.uc.soc','E.uc.int','E.uc.soc.sd','E.uc.int.sd'):=.(uc.soc*value,uc.int*value,uc.soc.sd*value,0)]
+tmp <- tmp[,.(iso3,E.uc.soc,E.uc.int,E.uc.soc.sd,E.uc.int.sd)]
+tmp[,metric:='Presumptive TB identified'] #what this will be added to
+
+CD <- merge(CD,tmp,by=c('iso3','metric'),all.x=TRUE)
+CD[metric=='Presumptive TB identified',
+   c('uc.soc','uc.soc.sd','uc.int','uc.int.sd'):=
+        .(uc.soc+E.uc.soc,
+          sqrt(uc.soc.sd^2+E.uc.soc.sd^2),
+          uc.int+E.uc.int,
+          sqrt(0^2+E.uc.int.sd^2))]
+CD[metric=='Presumptive TB identified'] #check
+CD[,c('E.uc.soc','E.uc.soc.sd','E.uc.int','E.uc.int.sd'):=NULL] #remove dummy data
+## --- X-ray end ---
 
 ## aggregate over metrics before merge
 CD[is.na(uc.soc.sd),uc.soc.sd:=0]

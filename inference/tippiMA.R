@@ -40,7 +40,6 @@ SMY <- D[,.(IRR=(sum(Intervention.Num)/sum(Intervention.FT))/
               (sum(Baseline.Num)/sum(Baseline.FT))),
          by=Country]
 
-
 DM <- melt(D[,.(country,site,
                 Baseline.Num,Intervention.Num,
                 Baseline.FT,Intervention.FT)],
@@ -102,7 +101,7 @@ save(MT,file=gh('outdata/MT_{qty}_{shhs[page,age]}.Rdata'))
 
 ## bayes smy
 bsmy <- data.table(
-  country=unique(D$Country),
+  country=D[,unique(Country)],
   RR.lo=apply(MT,2,lof),
   RR.hi=apply(MT,2,hif),
   RR.mid=apply(MT,2,mean)

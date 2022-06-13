@@ -65,3 +65,10 @@ write_sheet(Table2PT,shidneat,sheet="Tab2PT")
 ## combined intervention
 load(here('model/outdata/Table2both.1.Rdata'))
 write_sheet(Table2both,shidneat,sheet="Tab2combined")
+
+
+## backgrounds stats for results
+upload.to.sheets(here('dataprep/outdata/'),"Pstats.csv",shidneat)
+upload.to.sheets(here('dataprep/outdata/'),"Dstats.csv",shidneat)
+upload.to.sheets(here('dataprep/outdata/'),"Tstats.csv",shidneat)
+

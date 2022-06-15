@@ -150,18 +150,19 @@ HHCM[,value:=value/HHCM[activity=="index cases with HHCM",value]]
 ## part1
 ## ================= ATT component ============================
 
-## change names DBC so presumptive identified is screened
-extra <- as.data.table(expand.grid(metric='Screened for symptoms',
-                                   country=unique(ATR$country)))
-extra <- merge(extra,DBC[metric=='Presumptive TB identified',
-                         ##TODO check correct screen number
-                          .(country,ratio)],
-               by='country')
+## ## change names DBC so presumptive identified is screened
+## extra <- as.data.table(expand.grid(metric='Screened for symptoms',
+##                                    country=unique(ATR$country)))
+## extra <- merge(extra,DBC[metric=='Presumptive TB identified',
+##                          ##TODO check correct screen number
+##                           .(country,ratio)],
+##                by='country')
 
-## int/soc ratios for cascades at different stages
-E1 <- copy(DBC[,.(country,metric,ratio)])
-E1 <- rbind(E1,extra)
-E1 <- merge(E1,CK,by='country')
+## ## int/soc ratios for cascades at different stages
+## E1 <- copy(DBC[,.(country,metric,ratio)])
+## E1 <- rbind(E1,extra)
+## E1 <- merge(E1,CK,by='country')
+E1 <- merge(DBC[,.(country,metric,ratio)],CK,by='country')
 
 ## merge against cascade/cost data
 K <- merge(ART2,E1,by=c('iso3','metric'),all.x = TRUE)

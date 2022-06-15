@@ -521,6 +521,9 @@ tmp <- DBC[,.(rat=mean(ratio,na.rm=TRUE)),by=metric]
 DBC <- merge(DBC,tmp,by='metric')
 DBC[is.na(Baseline),ratio:=rat] #replace missing with average
 DBC[,rat:=NULL]                 #remove additional data
+tmp <- DBC[metric=='Presumptive TB identified']
+tmp[,metric:="Screened for symptoms"]
+DBC <- rbind(DBC,tmp) #NOTE apply presumptive to screened also
 
 
 ## this gives the int/soc ratio of presumptive and testing per treatment
@@ -532,6 +535,7 @@ DBC <- merge(DBC,countrykey,by='country')
 ART2 <- merge(ART2,DBC,by=c('iso3','metric'),all.x=TRUE)
 ART2[,c('country','Baseline','Intervention'):=NULL]
 ART2[is.na(ratio),ratio:=1.0]
+ART2[,.(iso3,metric,ratio)]
 
 ## merge and compute both sets of costs
 xtra <- ART2[,.(cost.soc=sum(uc.soc*frac/ratio),

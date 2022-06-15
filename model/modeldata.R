@@ -14,7 +14,7 @@ gh <- function(x) glue(here(x))
 
 set.seed(1234)
 cns <- c("Cameroon","Cote d'Ivoire","DRC","Kenya",
-         "Lesotho","Malawi","Uganda","Tanzania","Zimbabwe")
+         "Lesotho","Malawi","Tanzania","Uganda","Zimbabwe")
 cnisos <- c('CMR','CIV','COD','KEN','LSO','MWI','TZA','UGA','ZWE')
 
 
@@ -170,7 +170,8 @@ if(TRUE){## if(!file.exists(fn)){
 
 ## screening by entry-point
 SBEP <- fread(here('indata/screened_by_entrypoint.csv'))
-SBEP[,iso3:=c("CMR","CIV","COD","KEN","LSO","MWI","UGA","ZWE")] #TODO lacking TZA
+SBEP[,iso3:=c("CMR","CIV","COD","KEN","LSO","MWI","UGA","TZA","ZWE")] #NOTE different order
+SBEP <- SBEP[order(iso3)]
 save(SBEP,file=here('data/SBEP.Rdata'))
 
 ## blextract1.csv  blextract2.csv  resoure.int.csv
@@ -353,21 +354,11 @@ SBEPm[,total:=sum(value),by=iso3]
 SBEPm[,epfrac:=value/total] #entry-point fraction for screening
 SBEPm[,sum(epfrac),by=iso3] #check
 
-## TODO for now using average for TZA
-SBEPav <- SBEPm[,.(epfrac=mean(epfrac)),by=variable]
-SBEPav[,c('iso3','value','total'):=.('TZA',NA,NA)]
-
-SBEPm <- rbind(SBEPm,SBEPav,use.names = TRUE)
-
 ## merge cateogries
 SBEPm[variable=='CBhhcm',Activity:='Community hhci']
 SBEPm[variable=='FBhhcm',Activity:='Facility hhci']
 SBEPm[variable=='HIVicf',Activity:='Screening in HIV clinic']
 SBEPm[variable=='nonHIVicf',Activity:='Screening in non-HIV clinic']
-
-
-## ## NOTE TODO LSO omitted for now
-## SBEPm <- SBEPm[iso3!='LSO']
 
 ## do merge, add epfrac =1 for rest
 CD <- merge(CD,SBEPm[,.(iso3,Activity,epfrac)],
@@ -462,7 +453,7 @@ load(file=here('data/ART2.Rdata')) #cascade + costs
 
 ## ==================== baseline data ===========
 B1
-B2 #TODO this is aggregated over country?
+B2 #NOTE this is aggregated over country
 
 ## --- compare cascade
 ## baseline
@@ -872,8 +863,6 @@ setcolorder(tmp1,names(Table1PT))
 
 ## HHCM community based*; *=calculated on screens
 tmp2 <- SBEP[,.(country, 1e2*CBhhcm/(CBhhcm+FBhhcm))]
-## TODO fill in TZA NAs for now
-tmp2 <- rbind(tmp2,data.table(country='Tanzania',V2=NA))
 
 tmp2[country=='CDI',country:="Cote d'Ivoire"]
 tmp2 <- transpose(tmp2,make.names = TRUE)
@@ -898,8 +887,6 @@ setcolorder(tmp4,names(Table1PT))
 
 ## Children screened
 tmp5 <- SBEP[,.(country, (CBhhcm+FBhhcm))]
-## TODO fill in TZA NAs for now
-tmp5 <- rbind(tmp5,data.table(country='Tanzania',V2=NA))
 
 tmp5[country=='CDI',country:="Cote d'Ivoire"]
 tmp5 <- transpose(tmp5,make.names = TRUE)
@@ -921,8 +908,6 @@ tmpr[,perHH:=total/
 
 
 tmps <- SBEP[,.(country, kids=(CBhhcm+FBhhcm))]
-## TODO fill in TZA NAs for now
-tmps <- rbind(tmps,data.table(country='Tanzania',kids=NA))
 
 
 tmps[country=='CDI',country:="Cote d'Ivoire"]

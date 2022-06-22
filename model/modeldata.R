@@ -653,6 +653,7 @@ H <- H[iso3 %in% cnisos]
 H[,hiv:=e_tbhiv_prct/100]
 H[,hiv.sd:=(e_tbhiv_prct_hi-e_tbhiv_prct_lo)/392] #adults of course
 H <- H[,.(iso3,hiv,hiv.sd)]
+
 hfn <- here('data/H.Rdata')
 save(H,file=hfn)
 
@@ -689,6 +690,7 @@ CDR[,cdr.v:=NA_real_]
 CDR[,cdr.v:=(rel.sd*value)^2]
 CDR[,rel.sd:=NULL]
 CDR <- CDR[iso3 %in% cnisos]
+
 cdrfn <- here('data/CDR.Rdata')
 save(CDR,file=cdrfn)
 

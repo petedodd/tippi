@@ -14,7 +14,7 @@ gh <- function(x) glue(here(x))
 
 set.seed(1234)
 cns <- c("Cameroon","Cote d'Ivoire","DRC","Kenya",
-         "Lesotho","Malawi","Uganda","Tanzania","Zimbabwe")
+         "Lesotho","Malawi","Tanzania","Uganda","Zimbabwe")
 cnisos <- c('CMR','CIV','COD','KEN','LSO','MWI','TZA','UGA','ZWE')
 
 
@@ -170,7 +170,8 @@ if(TRUE){## if(!file.exists(fn)){
 
 ## screening by entry-point
 SBEP <- fread(here('indata/screened_by_entrypoint.csv'))
-SBEP[,iso3:=c("CMR","CIV","COD","KEN","LSO","MWI","UGA","ZWE")] #TODO lacking TZA
+SBEP[,iso3:=c("CMR","CIV","COD","KEN","LSO","MWI","UGA","TZA","ZWE")] #NOTE different order
+SBEP <- SBEP[order(iso3)]
 save(SBEP,file=here('data/SBEP.Rdata'))
 
 ## blextract1.csv  blextract2.csv  resoure.int.csv
@@ -353,21 +354,11 @@ SBEPm[,total:=sum(value),by=iso3]
 SBEPm[,epfrac:=value/total] #entry-point fraction for screening
 SBEPm[,sum(epfrac),by=iso3] #check
 
-## TODO for now using average for TZA
-SBEPav <- SBEPm[,.(epfrac=mean(epfrac)),by=variable]
-SBEPav[,c('iso3','value','total'):=.('TZA',NA,NA)]
-
-SBEPm <- rbind(SBEPm,SBEPav,use.names = TRUE)
-
 ## merge cateogries
 SBEPm[variable=='CBhhcm',Activity:='Community hhci']
 SBEPm[variable=='FBhhcm',Activity:='Facility hhci']
 SBEPm[variable=='HIVicf',Activity:='Screening in HIV clinic']
 SBEPm[variable=='nonHIVicf',Activity:='Screening in non-HIV clinic']
-
-
-## ## NOTE TODO LSO omitted for now
-## SBEPm <- SBEPm[iso3!='LSO']
 
 ## do merge, add epfrac =1 for rest
 CD <- merge(CD,SBEPm[,.(iso3,Activity,epfrac)],
@@ -394,7 +385,6 @@ CD[Activity=='TPT treatment',
 
 ## NOTE these are not in below and dropped from cascade merge
 ## OK for sample collection which is already buily into Xpert testing
-## TODO build X-ray costs in (see row in resource.int.csv)
 
 CD[Activity=='Sample collection',
    metric:="Sample collection"]
@@ -403,6 +393,33 @@ CD[Activity=='Chest x-ray',
    metric:="Chest x-ray"]
 
 unique(CD[,.(Activity,metric)]) #check
+
+## NOTE need to change this column type to NA real from logical
+CD[,uc.int.sd:=NULL]
+CD[,uc.int.sd:=NA_real_]
+
+## --- build X-ray costs in (see row in resource.int.csv) ---
+RIM[metric=='CXRamongclindx'] #NOTE this is among presumptives, but the denominator is really those bac-ve
+## this means that as a pc applied to /all/ TB it is likely an overestimate (and conservative for CEA)
+
+tmp <- CD[metric=='Chest x-ray']
+tmp <- merge(tmp,countrykey,by='iso3')
+tmp <- merge(tmp,RIM[metric=='CXRamongclindx',.(country,value)],by='country')
+## multiply X-ray cost by proportion of time used
+tmp[,c('E.uc.soc','E.uc.int','E.uc.soc.sd','E.uc.int.sd'):=.(uc.soc*value,uc.int*value,uc.soc.sd*value,0)]
+tmp <- tmp[,.(iso3,E.uc.soc,E.uc.int,E.uc.soc.sd,E.uc.int.sd)]
+tmp[,metric:='Presumptive TB identified'] #what this will be added to
+
+CD <- merge(CD,tmp,by=c('iso3','metric'),all.x=TRUE)
+CD[metric=='Presumptive TB identified',
+   c('uc.soc','uc.soc.sd','uc.int','uc.int.sd'):=
+        .(uc.soc+E.uc.soc,
+          sqrt(uc.soc.sd^2+E.uc.soc.sd^2),
+          uc.int+E.uc.int,
+          sqrt(0^2+E.uc.int.sd^2))]
+CD[metric=='Presumptive TB identified'] #check
+CD[,c('E.uc.soc','E.uc.soc.sd','E.uc.int','E.uc.int.sd'):=NULL] #remove dummy data
+## --- X-ray end ---
 
 ## aggregate over metrics before merge
 CD[is.na(uc.soc.sd),uc.soc.sd:=0]
@@ -436,7 +453,7 @@ load(file=here('data/ART2.Rdata')) #cascade + costs
 
 ## ==================== baseline data ===========
 B1
-B2 #TODO this is aggregated over country?
+B2 #NOTE this is aggregated over country
 
 ## --- compare cascade
 ## baseline
@@ -504,6 +521,9 @@ tmp <- DBC[,.(rat=mean(ratio,na.rm=TRUE)),by=metric]
 DBC <- merge(DBC,tmp,by='metric')
 DBC[is.na(Baseline),ratio:=rat] #replace missing with average
 DBC[,rat:=NULL]                 #remove additional data
+tmp <- DBC[metric=='Presumptive TB identified']
+tmp[,metric:="Screened for symptoms"]
+DBC <- rbind(DBC,tmp) #NOTE apply presumptive to screened also
 
 
 ## this gives the int/soc ratio of presumptive and testing per treatment
@@ -515,6 +535,7 @@ DBC <- merge(DBC,countrykey,by='country')
 ART2 <- merge(ART2,DBC,by=c('iso3','metric'),all.x=TRUE)
 ART2[,c('country','Baseline','Intervention'):=NULL]
 ART2[is.na(ratio),ratio:=1.0]
+ART2[,.(iso3,metric,ratio)]
 
 ## merge and compute both sets of costs
 xtra <- ART2[,.(cost.soc=sum(uc.soc*frac/ratio),
@@ -846,8 +867,6 @@ setcolorder(tmp1,names(Table1PT))
 
 ## HHCM community based*; *=calculated on screens
 tmp2 <- SBEP[,.(country, 1e2*CBhhcm/(CBhhcm+FBhhcm))]
-## TODO fill in TZA NAs for now
-tmp2 <- rbind(tmp2,data.table(country='Tanzania',V2=NA))
 
 tmp2[country=='CDI',country:="Cote d'Ivoire"]
 tmp2 <- transpose(tmp2,make.names = TRUE)
@@ -872,8 +891,6 @@ setcolorder(tmp4,names(Table1PT))
 
 ## Children screened
 tmp5 <- SBEP[,.(country, (CBhhcm+FBhhcm))]
-## TODO fill in TZA NAs for now
-tmp5 <- rbind(tmp5,data.table(country='Tanzania',V2=NA))
 
 tmp5[country=='CDI',country:="Cote d'Ivoire"]
 tmp5 <- transpose(tmp5,make.names = TRUE)
@@ -895,8 +912,6 @@ tmpr[,perHH:=total/
 
 
 tmps <- SBEP[,.(country, kids=(CBhhcm+FBhhcm))]
-## TODO fill in TZA NAs for now
-tmps <- rbind(tmps,data.table(country='Tanzania',kids=NA))
 
 
 tmps[country=='CDI',country:="Cote d'Ivoire"]

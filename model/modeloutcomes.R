@@ -29,6 +29,7 @@ library(data.table)
 library(HEdtree)
 library(ggplot2)
 library(ggthemes)
+library(ggpubr)
 library(scales)
 library(glue)
 
@@ -149,18 +150,19 @@ HHCM[,value:=value/HHCM[activity=="index cases with HHCM",value]]
 ## part1
 ## ================= ATT component ============================
 
-## change names DBC so presumptive identified is screened
-extra <- as.data.table(expand.grid(metric='Screened for symptoms',
-                                   country=unique(ATR$country)))
-extra <- merge(extra,DBC[metric=='Presumptive TB identified',
-                         ##TODO check correct screen number
-                          .(country,ratio)],
-               by='country')
+## ## change names DBC so presumptive identified is screened
+## extra <- as.data.table(expand.grid(metric='Screened for symptoms',
+##                                    country=unique(ATR$country)))
+## extra <- merge(extra,DBC[metric=='Presumptive TB identified',
+##                          ##TODO check correct screen number
+##                           .(country,ratio)],
+##                by='country')
 
-## int/soc ratios for cascades at different stages
-E1 <- copy(DBC[,.(country,metric,ratio)])
-E1 <- rbind(E1,extra)
-E1 <- merge(E1,CK,by='country')
+## ## int/soc ratios for cascades at different stages
+## E1 <- copy(DBC[,.(country,metric,ratio)])
+## E1 <- rbind(E1,extra)
+## E1 <- merge(E1,CK,by='country')
+E1 <- merge(DBC[,.(country,metric,ratio)],CK,by='country')
 
 ## merge against cascade/cost data
 K <- merge(ART2,E1,by=c('iso3','metric'),all.x = TRUE)
@@ -1233,8 +1235,6 @@ fwrite(picers,file=fn)
 
 ## TODO cross check cost SOC PT - seems different
 
-PTT[,unique(iso3)]
-
 ## ================= BOTH components ============================
 ## want weighting during baseline
 PTT <- merge(T1[,.(country,iso3,id,Dcost.att=Dcost,dDALY.att=dDALY)],
@@ -1266,23 +1266,23 @@ ggsave(GP,file=fn1,w=10,h=10); ## ggsave(GP,file=fn2,w=10,h=10)
 
 ## make CEAC data
 lz <- seq(from = 0,to=ceactop,length.out = 1000)
-pceacd <- list()
+bceacd <- list()
 for(iso in unique(PT1$iso3)){
     tmp <- PTT[iso3==iso,.(Q=dDALY,P=Dcost)]
-    pceacd[[iso]] <- data.table(
+    bceacd[[iso]] <- data.table(
         iso3=iso,x=lz,
         y=make.ceac(tmp,lz))
 }
-pceacd <- rbindlist(pceacd)
+bceacd <- rbindlist(bceacd)
 
 ## make CEAC plot
-PCEAC <- make.ceac.plot(pceacd,xpad=50)
-if(!shell) PCEAC
+BCEAC <- make.ceac.plot(bceacd,xpad=50)
+if(!shell) BCEAC
 
 ## save out
 fn1 <- glue(here('graphs/CEACall')) + SA + '.' + ACF + '.png'
 ## fn2 <- glue(here('graphs/CEACall')) + SA + '.' + ACF + '.pdf'
-ggsave(PCEAC,file=fn1,w=10,h=10); ## ggsave(PCEAC,file=fn2,w=10,h=10)
+ggsave(BCEAC,file=fn1,w=10,h=10); ## ggsave(PCEAC,file=fn2,w=10,h=10)
 
 
 ##  combined ICERS
@@ -1390,10 +1390,28 @@ Table2both <- bicer
 fn <- glue(here('outdata/Table2both')) + SA +'.' + ACF + '.Rdata'
 save(Table2both,file=fn)
 
+## ---- combined CEAC plot ---
+## CEAC #from ceacd
+## PCEAC #from pceacd
+## BCEAC #from bceacd
+## TODO country names not iso3
+
+ttls <- c('Intensified case-finding intervention',
+          'Household contact management intervention',
+          'Combined CaP TB intervention package')
+CAP <- list(CEAC,PCEAC,BCEAC)
+for(i in 1:3) CAP[[i]] <- CAP[[i]] + ggtitle(ttls[i])
+
+CAPP <- ggarrange(plotlist = CAP,
+                  labels="AUTO",
+          common.legend = TRUE,legend="bottom",ncol=1)
+
+fn1 <- glue(here('graphs/allCEACs')) + SA + '.' + ACF + '.png'
+## fn2 <- glue(here('graphs/allCEACs')) + SA + '.' + ACF + '.pdf'
+ggsave(CAPP,file=fn1,w=8,h=15); #ggsave(CAPP,file=fn2,w=8,h=15);
 
 
 ## ================= TODO list ============================
-## check X-ray costing
 
 ## NOTE
 ## SHARED tippi folder:

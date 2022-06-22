@@ -1,12 +1,12 @@
 name,value
 Number of sites,146
-Site time,13945.05
+Site time,14265.57
 Median sites per country,
-Median IQR site time,32.71 (29.79 - 34.29)
-Site time for BL,5244
-Site time for INT,8701.05
-Rate BL,0.88
-Rate INT,1.27
+Median IQR site time,33.04 (30.51 - 34.29)
+Site time for BL,5256
+Site time for INT,9009.57
+Rate BL,0.87
+Rate INT,1.3
 Median IQR Rate BL,0.33 (0.08 - 0.83)
 Median IQR Rate INT,0.33 (0.08 - 0.83)
 Range country rates BL,0.27 - 2.26
@@ -18,5 +18,5 @@ Number of txs 0-4,
 Number of txs 5-14,
 Number of txs 0-14,
 Percent sites improving 0-4,71.92
-Percent sites improving 5-14,55.86
+Percent sites improving 5-14,56.16
 Percent sites improving 0-14,71.23

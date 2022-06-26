@@ -5,7 +5,7 @@ page <- as.integer(args[4]) #age
 print(qty)
 print(page)
 
-## ## stop()
+## stop()
 ## qty <- 'tx'
 ## page <- 2 #NOTE change this to change age group
 
@@ -180,24 +180,24 @@ dxstats$n_eff <- paste0(round(dxstats$n_eff,0))
 fn <- glue(here('outdata/')) + qty + 'MCdx' + shhs[page,age] + '.csv'
 fwrite(dxstats,file=fn)
 
-## can comment below
-## empirical data
-## sites
-siteeffects <- D[,.(site.effect = (Intervention.Num/Intervention.FT)/
-                        (Baseline.Num/Baseline.FT),
-                    int.number = Intervention.Num,
-                    country=Country,
-                    index)]
-## country
-countryeffects <- D[,.(country.effect =
-                          (sum(Intervention.Num)/sum(Intervention.FT))/
-                           (sum(Baseline.Num)/sum(Baseline.FT)),
-                       int.number=sum(Intervention.Num) ),
-                    by=.(country=Country)]
-## MC$country <- factor(MC$country,levels=rev(MC$country),ordered = TRUE)
+## ## can comment below
+## ## empirical data
+## ## sites
+## siteeffects <- D[,.(site.effect = (Intervention.Num/Intervention.FT)/
+##                         (Baseline.Num/Baseline.FT),
+##                     int.number = Intervention.Num,
+##                     country=Country,
+##                     index)]
+## ## country
+## countryeffects <- D[,.(country.effect =
+##                           (sum(Intervention.Num)/sum(Intervention.FT))/
+##                            (sum(Baseline.Num)/sum(Baseline.FT)),
+##                        int.number=sum(Intervention.Num) ),
+##                     by=.(country=Country)]
+## ## MC$country <- factor(MC$country,levels=rev(MC$country),ordered = TRUE)
 
-CF <- merge(MC,countryeffects,by='country')
-CF
+## CF <- merge(MC,countryeffects,by='country')
+## CF
 
 
 ## ggplot(CF,aes(country.effect,`50%`,label=country,
@@ -208,84 +208,84 @@ CF
 ##   geom_abline(slope=1,intercept = 0,col=2)+
 ##   expand_limits(x=c(0,NA),y=c(0,NA))
 
-## data from MCMC
-SC <- summary(samp0,'lsrr')$summary[,c('2.5%','50%','97.5%','mean')]
-SC <- exp(SC)
-SC <- as.data.table(SC)
-SC[,index:=1:nrow(SC)]
+## ## data from MCMC
+## SC <- summary(samp0,'lsrr')$summary[,c('2.5%','50%','97.5%','mean')]
+## SC <- exp(SC)
+## SC <- as.data.table(SC)
+## SC[,index:=1:nrow(SC)]
 
-SF <- merge(SC,siteeffects,by='index')
-SF
+## SF <- merge(SC,siteeffects,by='index')
+## SF
 
-## TODO try no country pooling?
-GP <- ggplot(SF,aes(site.effect,`50%`,label=index,
-                    ymin=`2.5%`,ymax=`97.5%`,
-                    col=country,
-                    size=int.number))+
-  ## geom_point()+
-  geom_pointrange()+
-  ggrepel::geom_text_repel()+
-  geom_abline(slope=1,intercept = 0,col=2)+
-  expand_limits(x=c(0,NA),y=c(0,NA))
-## GP
-GP+scale_x_log10()+scale_y_log10()+facet_wrap(~country)
+## ## TODO try no country pooling?
+## GP <- ggplot(SF,aes(site.effect,`50%`,label=index,
+##                     ymin=`2.5%`,ymax=`97.5%`,
+##                     col=country,
+##                     size=int.number))+
+##   ## geom_point()+
+##   geom_pointrange()+
+##   ggrepel::geom_text_repel()+
+##   geom_abline(slope=1,intercept = 0,col=2)+
+##   expand_limits(x=c(0,NA),y=c(0,NA))
+## ## GP
+## GP+scale_x_log10()+scale_y_log10()+facet_wrap(~country)
 
-ggsave('test2cN.pdf')
-
-
+## ggsave('test2cN.pdf')
 
 
-ttl <- glue(ifelse(qty=='tx',
-                   'anti-tuberculosis treatment initiations',
-                   'tuberculosis preventive therapy initiations')) +
-  ", " + shhs[page,aged] + ' years'
-
-ggplot(MC,aes(country,`50%`)) +
-  geom_point(size=2) +
-  geom_point(data=siteeffects[is.finite(site.effect)],
-             aes(country,site.effect,
-                 size=int.number,col=country),
-             shape=1) +
-  geom_point(data=countryeffects,aes(country,country.effect,
-                                     size=int.number,col=country),
-             shape=4) +
-  geom_hline(yintercept = 1,lty=2,col='darkgrey')+
-  geom_point(size=2) +
-  geom_errorbar(aes(ymin=`2.5%`,ymax=`97.5%`),width=0) +
-  scale_y_log10() + #NOTE one DRC site omitted
-  ylab('Rate ratio (log scale)')+
-  xlab('Country')+
-  coord_flip() +
-  theme_classic() + ggpubr::grids()+ ggtitle(ttl)+
-  labs(size='Number (intervention)')+
-  guides(colour="none") + 
-  theme(legend.position = 'bottom')
-
-ggsave('testN.pdf',w=7,h=7)
 
 
-MAP <- 
-ggplot(MC,aes(country,`50%`)) +
-    geom_point(size=2) +
-    geom_point(data=siteeffects[is.finite(site.effect)],
-               aes(country,site.effect,
-                   size=int.number,col=country),
-               shape=1) +
-    geom_point(data=countryeffects,aes(country,country.effect,
-                                       size=int.number,col=country),
-               shape=4) +
-    geom_hline(yintercept = 1,lty=2,col='darkgrey')+
-    geom_point(size=2) +
-    geom_errorbar(aes(ymin=`2.5%`,ymax=`97.5%`),width=0) +
-    scale_y_sqrt(limits=c(0,150)) + #NOTE one DRC site omitted
-    ylab('Rate ratio (square root scale)')+
-    xlab('Country')+
-    coord_flip() +
-    theme_classic() + ggpubr::grids()+ ggtitle(shhs[page,aged])+
-    labs(size='Number (intervention)')+
-    guides(colour="none") + 
-    theme(legend.position = 'bottom')
-MAP
+## ttl <- glue(ifelse(qty=='tx',
+##                    'anti-tuberculosis treatment initiations',
+##                    'tuberculosis preventive therapy initiations')) +
+##   ", " + shhs[page,aged] + ' years'
+
+## ggplot(MC,aes(country,`50%`)) +
+##   geom_point(size=2) +
+##   geom_point(data=siteeffects[is.finite(site.effect)],
+##              aes(country,site.effect,
+##                  size=int.number,col=country),
+##              shape=1) +
+##   geom_point(data=countryeffects,aes(country,country.effect,
+##                                      size=int.number,col=country),
+##              shape=4) +
+##   geom_hline(yintercept = 1,lty=2,col='darkgrey')+
+##   geom_point(size=2) +
+##   geom_errorbar(aes(ymin=`2.5%`,ymax=`97.5%`),width=0) +
+##   scale_y_log10() + #NOTE one DRC site omitted
+##   ylab('Rate ratio (log scale)')+
+##   xlab('Country')+
+##   coord_flip() +
+##   theme_classic() + ggpubr::grids()+ ggtitle(ttl)+
+##   labs(size='Number (intervention)')+
+##   guides(colour="none") + 
+##   theme(legend.position = 'bottom')
+
+## ggsave('testN.pdf',w=7,h=7)
+
+
+## MAP <- 
+## ggplot(MC,aes(country,`50%`)) +
+##     geom_point(size=2) +
+##     geom_point(data=siteeffects[is.finite(site.effect)],
+##                aes(country,site.effect,
+##                    size=int.number,col=country),
+##                shape=1) +
+##     geom_point(data=countryeffects,aes(country,country.effect,
+##                                        size=int.number,col=country),
+##                shape=4) +
+##     geom_hline(yintercept = 1,lty=2,col='darkgrey')+
+##     geom_point(size=2) +
+##     geom_errorbar(aes(ymin=`2.5%`,ymax=`97.5%`),width=0) +
+##     scale_y_sqrt(limits=c(0,150)) + #NOTE one DRC site omitted
+##     ylab('Rate ratio (square root scale)')+
+##     xlab('Country')+
+##     coord_flip() +
+##     theme_classic() + ggpubr::grids()+ ggtitle(shhs[page,aged])+
+##     labs(size='Number (intervention)')+
+##     guides(colour="none") + 
+##     theme(legend.position = 'bottom')
+## MAP
 
 ## fn <- glue(here('graphs/')) + qty + 'MA3' + shhs[page,age] + '.pdf'
 ## fn2 <- glue(here('graphs/')) + qty + 'MA3' + shhs[page,age] + '.png'

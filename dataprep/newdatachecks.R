@@ -5,8 +5,10 @@ LP <- glue(scan(here('graphs/petelocalpath.txt'),what="string"))
 
 ## clinics to drop for reasons of non comparability
 dtdrop <- c("Beatrice Road Infectious Disease Hospital (BRIDH)",
-            "Dulibadzimu Clinic","Hopley Clinic","Kuwadzana Polyclinic",
-            "Mabvuku Polyclinic","Mbare Polyclinic","Shashe Clinic")
+            "Dulibadzimu Clinic","Hopley Clinic",
+            "Kuwadzana Polyclinic",
+            "Mabvuku Polyclinic","Mbare Polyclinic",
+            "Shashe Clinic")
 
 ptdrop <- c("Ntungamo Ngoma HC III",
             "Shashe Clinic")

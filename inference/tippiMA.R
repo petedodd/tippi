@@ -5,7 +5,7 @@ print(qty)
 print(page)
 
 ## ## ## stop()
-## qty <- 'px'
+## qty <- 'tx'
 ## page <- 2 #NOTE change this to change age group
 
 

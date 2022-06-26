@@ -6,8 +6,8 @@ print(qty)
 print(page)
 
 ## ## stop()
-qty <- 'tx'
-page <- 2 #NOTE change this to change age group
+## qty <- 'tx'
+## page <- 2 #NOTE change this to change age group
 
 ## NOTE be careful with site names confidentiality!
 ## library
@@ -25,7 +25,7 @@ source(here('../dataprep/tippifunctions.R'))
 ## compile model
 hsm <- stan_model(file=here('stan/tippihm.stan')) #hierarchical model
 
-hsm <- stan_model(file=here('stan/tippihm_nocp.stan')) #hierarchical model
+## hsm <- stan_model(file=here('stan/tippihm_nocp.stan')) #hierarchical model
 
 
 
@@ -51,31 +51,30 @@ fn <- glue(here('data/')) + qty + 'CK.' + shhs[page,age] + '.Rdata'
 save(CK,file=fn)
 
 
-## data for stan
-D4Snc <- list(
-  ## number of countries
-  NC = length(unique(D[,Country])),
-  ## total number of sites
-  NST = length(unique(D[,Facility])),
-  ## site time in intervention
-  STi = D[,Intervention.FT],
-  ## site time in baseline
-  STb = D[,Baseline.FT],
-  ## number intervention
-  DXi = D[,Intervention.Num],
-  ## number baseline
-  DXb = D[,Baseline.Num],
-  ## start index for country
-  st = D[,.(fst=min(index)),by=Country][,fst],
-  ## st = CK[,fst],
-  ## end index for country
-  nd = D[,.(lst=max(index)),by=Country][,lst],
-  ratessig = 100, #rate prior variance
-  lcm = 0, #prior log effect
-  lcs = 100, #prior effect variance
-  sigsig = 20*1    #variance prior variance
-)
-
+## ## data for stan
+## D4Snc <- list(
+##   ## number of countries
+##   NC = length(unique(D[,Country])),
+##   ## total number of sites
+##   NST = length(unique(D[,Facility])),
+##   ## site time in intervention
+##   STi = D[,Intervention.FT],
+##   ## site time in baseline
+##   STb = D[,Baseline.FT],
+##   ## number intervention
+##   DXi = D[,Intervention.Num],
+##   ## number baseline
+##   DXb = D[,Baseline.Num],
+##   ## start index for country
+##   st = D[,.(fst=min(index)),by=Country][,fst],
+##   ## st = CK[,fst],
+##   ## end index for country
+##   nd = D[,.(lst=max(index)),by=Country][,lst],
+##   ratessig = 100, #rate prior variance
+##   lcm = 0, #prior log effect
+##   lcs = 100, #prior effect variance
+##   sigsig = 20*1    #variance prior variance
+## )
 
 ## data for stan
 D4S <- list(
@@ -108,21 +107,21 @@ D4S <- list(
 )
 
 ## CHECK
-for(i in 1:8)
+for(i in 1:9)
   print(D[D4S$st[i]:D4S$nd[i],Country])
 
 
 fn <- glue(here('data/')) + qty + 'stanin.' + shhs[page,age] + '.Rdata'
 save(D4S,file=fn)
 
-D4S$sigsig <- 100
-D4S$lcssig <- 100
-D4S$ratessig <- 100
+## D4S$sigsig <- 100
+## D4S$lcssig <- 100
+## D4S$ratessig <- 100
 
 ## sample from model
 niter <- 1e4; nchains <- 1 #TODO change
 samp0 <- sampling(hsm,
-                  data = D4Snc,
+                  data = D4S,## nc,
                   ## control = list(max_treedepth = 15),
                   iter = niter,
                   chains = nchains,

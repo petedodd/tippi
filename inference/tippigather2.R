@@ -14,7 +14,7 @@ source(here('../dataprep/tippifunctions.R'))
 ## shhs[page,age]
 
 ## make single graphs
-grphsE <- grphs <- list()
+grphsE <- grphs <- MCF <- list()
 for(page in 1:3){
   for(qty in c("tx","px")){
     cat(qty,"...\n")
@@ -53,6 +53,7 @@ for(page in 1:3){
     ## MA results
     load(gh('outdata/bsmy_{qty}_{shhs[page,age]}.Rdata'))
     load(gh('outdata/fsmy_{qty}_{shhs[page,age]}.Rdata'))
+    load(gh('outdata/RMAR_{qty}_{shhs[page,age]}.Rdata'))
 
     ## reorder
     lvl <- unique(as.character(D$Country))
@@ -118,6 +119,22 @@ for(page in 1:3){
 
     ## save
     grphsE[[glue("{qty}{shhs[page,age]}")]] <- MAPE
+
+    ## assemble compare methods data
+    fsmy[,method:='frequentist site<country model']
+    bsmy[,method:='Bayesian site<country model']
+    countryeffects[,method:='empirical']
+    RMAR[,method:='country-wise RE meta-analysis']
+    tmp <- rbindlist(list(
+      countryeffects[,.(country,RR=country.effect,
+                        RR.lo,RR.hi,method)],
+      RMAR[,.(country,RR,RR.lo,RR.hi,method)],
+      fsmy[,.(country,RR=RR.mid,RR.lo,RR.hi,method)],
+      bsmy[,.(country,RR=RR.mid,RR.lo,RR.hi,method)]
+    ))
+    tmp[,age:=shhs[page,aged]]
+    tmp[,qty:=ifelse(qty=='px','TPT','ATT')]
+    MCF[[glue("{qty}{shhs[page,age]}")]] <- tmp
   }
 }
 
@@ -135,3 +152,28 @@ GA <- ggarrange(plotlist = grphsE,
                 common.legend = TRUE,legend='top')
 ggsave(filename=here("graphs/MAllE2.eps"),w=13,h=12)
 ggsave(GA,filename=here("graphs/MAllE2.png"),w=13,h=12)
+
+
+## model comparison
+MCF <- rbindlist(MCF)
+
+MCF <- merge(MCF,
+             MCF[method=='Bayesian site<country model',
+                 .(ref=RR,qty,age,country)],
+             by=c('country','age','qty'),
+             all.x=TRUE)
+
+GP <- ggplot(MCF,aes(RR,RR/ref,
+                     ymin=RR.lo/ref,ymax=RR.hi/ref,
+                     col=country,shape=method))+
+  geom_hline(yintercept = 1,col=2,alpha=0.5,lty=2)+
+  geom_point()+
+  geom_errorbar(width=0)+
+  scale_x_log10()+  scale_y_log10()+
+  facet_grid(age~qty,scales='free')+
+  theme_bw()+
+  xlab('Incidence rate ratio')+
+  ylab('Ratio compared to reference')
+
+ggsave(GP,filename=here("graphs/MCF.png"),w=13,h=12)
+ggsave(GP,filename=here("graphs/MCF.pdf"),w=13,h=12)

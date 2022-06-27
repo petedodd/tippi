@@ -177,3 +177,36 @@ GP <- ggplot(MCF,aes(RR,RR/ref,
 
 ggsave(GP,filename=here("graphs/MCF.png"),w=13,h=12)
 ggsave(GP,filename=here("graphs/MCF.pdf"),w=13,h=12)
+
+
+
+## HM
+HM <- list()
+for(qty in c('px','tx')){
+  for(ag in shhs$age){
+    tmp <- fread(gh('outdata/{qty}MC{ag}.csv'))
+    tmp[,qty:=ifelse(qty=='tx','ATT','TPT')]
+    tmp[,age:=shhs[age==ag,aged]]
+    HM[[glue('{qty}{ag}')]] <- tmp
+  }
+}
+HM <- rbindlist(HM)
+
+
+MCF[,unique(method)]
+
+tmp <- MCF[method=="Bayesian site<country model"]
+tmp <- MCF[method=="frequentist site<country model"]
+tmp <- MCF[method=="empirical"]
+tmp <- MCF[method=="country-wise RE meta-analysis"]
+
+tmp <- merge(tmp,HM,by=c('country','age','qty'))
+
+
+ggplot(tmp,aes(mean,RR))+
+  geom_point()+
+  geom_abline(slope=1,intercept=0,col=2)+
+  facet_wrap(~qty+age,scales='free')+
+  geom_hline(yintercept = 1,col=2)+
+  geom_vline(xintercept = 1,col=2)
+

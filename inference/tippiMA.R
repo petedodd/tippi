@@ -56,10 +56,16 @@ mm <- glmer(formula = Num ~ (period|country/site),
             data=DM,
             family = poisson(link = "log"))
 
+## same as:
+## mm <- glmer(formula = Num ~ (1+period|country)+(1+period|country:site),
+##             offset=log(FT),
+##             data=DM,
+##             family = poisson(link = "log"))
 
-print(mm)
-SMY
-exp(coef(mm)$country)
+mm <- glmer(formula = Num ~ (1|site)+(0+period|country/site),
+            offset=log(FT),
+            data=DM,
+            family = poisson(link = "log"))
 
 ## freq smy
 fsmy <- data.table(country=D[,unique(Country)],
@@ -79,7 +85,6 @@ smm <- stan_glmer(formula = Num ~ (period|country/site),
 ## str(MT)
 ## colnames(MT)
 
-
 nmz <- c(
   "b[periodIntervention country:1]",
   "b[periodIntervention country:2]",
@@ -92,12 +97,31 @@ nmz <- c(
   "b[periodIntervention country:9]"
 )
 
+
 MT <- as.matrix(smm,pars = nmz)
 head(MT)
 MT <- exp(MT)
 head(MT)
 save(MT,file=gh('outdata/MT_{qty}_{shhs[page,age]}.Rdata'))
 
+## ## checking interpretation
+## ## tidy version
+## library(broom.mixed)
+## (t3 <- tidy(smm, effects="ran_vals",exponentiate = TRUE,conf.int = TRUE, conf.level=.95))
+## t3 <- as.data.table(t3)
+
+## ## prediction version
+## tdss <- expand.grid(country=1:9,site=300,period=c('Baseline','Intervention'))
+## pout <- posterior_epred(smm,newdata = tdss,re.form = ~(period|country/site),offset = log(1))
+## test1 <- rep(NA,9)
+## for(i in 1:9)
+##   test1[i] <- median((pout[,10+i-1]/pout[,1+i-1]))
+
+## ## compare
+## t3[group=='country' & term=='periodIntervention',.(exp(estimate)),by=level] #same as MT medians
+## apply(MT,2,median)
+## test1
+## countryeffects[,.(country,country.effect)] #same pattern
 
 ## bayes smy
 bsmy <- data.table(
@@ -215,115 +239,3 @@ save(MAP,file=fn)
 
 
 
-
-## https://mc-stan.org/rstanarm/reference/as.matrix.stanreg.html
-
-## library(lattice)
-## xyplot(data=DM,Num/FT ~ period | country,
-##        groups = site,
-##        pch=19, lwd=2, type=c('p'))
-
-## https://stats.stackexchange.com/questions/122009/extracting-slopes-for-cases-from-a-mixed-effects-model-lme4
-
-## test <- model.matrix(object = Num ~ FT * (site + (period|country/site)),
-##                      data=DM)
-
-## test <- model.matrix(object = Num ~ FT * (site + period),
-##                      data=DM)
-## head(test)
-
-
-## dm <- melt(D[,.(Country,Facility,
-##                 Baseline.Num,Intervention.Num,
-##                 Baseline.FT,Intervention.FT)],
-##            id=c('Country','Facility'))
-## dm[,c('period','qty'):=tstrsplit(variable,split="\\.")]
-## dm <- dcast(dm,Country+Facility+period ~ qty)
-## dm$Num <- as.integer(dm$Num)
-## dm[,Country:=factor(Country)]
-## dm[,Facility:=factor(Facility)]
-
-
-## test <- model.matrix(object = Num ~ FT * (Facility + period),
-##                      data=dm)
-## test[1:6,1:10]
-
-
-
-
-
-
-## str(dat.konstantopoulos2011)
-
-## ## warm-up modelling everything for single country
-## cn <- 'Uganda'
-## tmp <- D[Country==cn]
-## modcn <- rma.glmm(measure = "IRR",model='CM.EL',
-##                    data = tmp,
-##                    x2i = Baseline.Num, t2i = Baseline.FT,
-##                    x1i = Intervention.Num, t1i = Intervention.FT)
-
-## print(modcn)
-## predict(modcn, transf=exp, digits=2)
-## ## forest(modcn,transf = exp)
-## ti <- glue(cn) + ', ' + shhs[page,aged]  + ', ' + qty
-## forest(modcn,main=ti)#,transf = exp)
-## tmp
-
-
-## ## loop over all countries
-## for(cn in D[,unique(Country)]){
-##   print(cn)
-##   tmp <- D[Country==cn]
-##   print(tmp[,(sum(Intervention.Num)/sum(Intervention.FT))/
-##              (sum(Baseline.Num)/sum(Baseline.FT))])
-##   modcn <- rma.glmm(measure = "IRR",model='CM.EL',
-##                      data = tmp,
-##                      x2i = Baseline.Num, t2i = Baseline.FT,
-##                      x1i = Intervention.Num, t1i = Intervention.FT)
-##   ti <- glue(cn) + ', ' + shhs[page,aged]  + ', ' + qty
-##   fn <- gsub("[ |,|-]","",ti)
-##   fn <- gh('graphs/f_{fn}.pdf')
-##   pdf(file=fn)
-##   forest(modcn,main=ti,transf = exp)
-##   dev.off()
-## }
-
-## ## 3 level model
-## modall <- rma.glmm(measure = "IRR",model='CM.EL',
-##                    mods = ~ 1 | country/facility,
-##                    data = D,
-##                    x2i = Baseline.Num, t2i = Baseline.FT,
-##                    x1i = Intervention.Num, t1i = Intervention.FT)
-
-
-## modall <- rma.mv(measure = "IRR",model='CM.EL',
-##                    mods = ~ 1 | country/facility,
-##                    data = D,
-##                    x2i = Baseline.Num, t2i = Baseline.FT,
-##                    x1i = Intervention.Num, t1i = Intervention.FT)
-
-
-## ## multi-levle poisson-normal?
-## fitstats.rma(modall)
-
-## print(modall)
-## summary(modall)
-## predict(modall, transf=exp, digits=2)
-## ## forest(modcn,transf = exp)
-## ti <- glue(cn) + ', ' + shhs[page,aged]  + ', ' + qty
-## forest(modall)#,transf = exp)
-
-
-
-## str(modall)
-
-
-## library(merTools)
-## predictInterval(mm)
-
-##
-
-## library(parameters)
-## model_parameters(mm)
-## model_parameters(mm,effects = "all")

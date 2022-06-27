@@ -14,7 +14,7 @@ source(here('../dataprep/tippifunctions.R'))
 ## shhs[page,age]
 
 ## make single graphs
-grphsE <- grphs <- list()
+grphsE <- grphs <- MCF <- list()
 for(page in 1:3){
   for(qty in c("tx","px")){
     cat(qty,"...\n")
@@ -30,9 +30,6 @@ for(page in 1:3){
     D[,index:=1:nrow(D)] #for start/ends
     setkey(D,Country,Facility)
 
-    ## DM <- dataprep(D)
-    ## intplot(DM) #looks OK
-
     ## empirical data
     ## sites
     siteeffects <- D[,.(site.effect = (Intervention.Num/
@@ -41,7 +38,8 @@ for(page in 1:3){
                         int.number = Intervention.Num,
                         country=Country,
                         index)]
-    fwrite(siteeffects,file=gh('outdata/siteeffects_{qty}_{shhs[page,age]}.csv'))
+    fwrite(siteeffects,
+           file=gh('outdata/siteeffects_{qty}_{shhs[page,age]}.csv'))
     ## country
     countryeffects <- D[,.(country.effect =
                              (sum(Intervention.Num)/
@@ -49,13 +47,27 @@ for(page in 1:3){
                              (sum(Baseline.Num)/sum(Baseline.FT)),
                            int.number=sum(Intervention.Num) ),
                         by=.(country=Country)]
-    fwrite(countryeffects,file=gh('outdata/countryeffects_{qty}_{shhs[page,age]}.csv'))
+    fwrite(countryeffects,
+           file=gh('outdata/countryeffects_{qty}_{shhs[page,age]}.csv'))
 
     ## MA results
-    MC <- fread(gh('outdata/{qty}MC{shhs[page,age]}.csv'))
-    MC$country <- factor(MC$country,
-                         levels=rev(MC$country),ordered = TRUE)
-    MC[,txt:=paste0(ft(`50%`)," (",ft(`2.5%`)," - ",ft(`97.5%`),")")]
+    load(gh('outdata/bsmy_{qty}_{shhs[page,age]}.Rdata'))
+    load(gh('outdata/fsmy_{qty}_{shhs[page,age]}.Rdata'))
+    load(gh('outdata/RMAR_{qty}_{shhs[page,age]}.Rdata'))
+
+    ## reorder
+    lvl <- unique(as.character(D$Country))
+    lvl <- rev(lvl)
+    siteeffects$country <- factor(siteeffects$country,levels=lvl)
+    countryeffects$country <- factor(countryeffects$country,levels=lvl)
+    fsmy$country <- factor(fsmy$country,levels=lvl)
+    bsmy$country <- factor(bsmy$country,levels=lvl)
+    clz <- RColorBrewer::brewer.pal(length(lvl),'Paired')
+
+    ## harmonization
+    siteeffects[,c('RR.mid','RR.lo','RR.hi'):=NA]
+    countryeffects[,c('RR.mid','RR.lo','RR.hi'):=NA]
+    fsmy[,c('RR.lo','RR.hi'):=NA]
 
     ## --- make graph
     ## title
@@ -63,73 +75,66 @@ for(page in 1:3){
                        'anti-tuberculosis treatment initiation',
                        'tuberculosis preventive therapy initiation')) +
       ", " + shhs[page,aged] + ' years'
-    ## graph
-    MAP <-
-      ggplot(MC,aes(country,`50%`)) +
+
+    MAP <- 
+      ggplot(data=bsmy,aes(x=country,
+                           y=RR.mid,ymin=RR.lo,ymax=RR.hi,
+                           col=country)) +
       geom_point(size=2) +
+      geom_point(data=fsmy,size=2,col=2,shape=15) +
       geom_point(data=siteeffects[is.finite(site.effect)],
-                 aes(country,site.effect,
-                     size=int.number,col=country),
+                 aes(x=country,y=site.effect,
+                     size=int.number),
                  shape=1) +
-      geom_point(data=countryeffects,aes(country,country.effect,
-                                         size=int.number,col=country),
+      geom_point(data=countryeffects,
+                 aes(x=country,y=country.effect,
+                     size=int.number),
                  shape=4) +
+      ## scale_color_manual(values = clz)+
       geom_hline(yintercept = 1,lty=2,col='darkgrey')+
-      geom_point(size=2) +
-      geom_errorbar(aes(ymin=`2.5%`,ymax=`97.5%`),width=0) +
-      geom_text(aes(x=country,y=90,label=txt),size=3)+
-      scale_y_log10(limits=c(5e-2,1.4e2),
-                    label=comma) + #NOTE one DRC site omitted
-      ylab('Rate ratio (log scale)')+
+      geom_point(size=2,col='black') +
+      geom_errorbar(width=0,col='black') +
+      scale_y_sqrt(limits=c(0,150)) + #NOTE one DRC site omitted
+      ylab('Rate ratio (square root scale)')+
       xlab('Country')+
       coord_flip() +
       theme_classic() + ggpubr::grids()+ ggtitle(ttl)+
       labs(size='Number (intervention)')+
       guides(colour="none") + 
       theme(legend.position = 'bottom')
+    ## MAP
 
     ## save
     grphs[[glue("{qty}{shhs[page,age]}")]] <- MAP
 
-    ## ---- empmirical version
-    SE <- siteeffects[int.number>0 & is.finite(site.effect),
-                      .(sdl=sd(log(site.effect))),by=country]
-    CE <- merge(countryeffects,SE,by='country')
-    CE[,le:=log(country.effect)]
-    CE[,le.lo:=le-1.96*sdl]; CE[,le.hi:=le+1.96*sdl];
-    CE[,c('mid','lo','hi'):=.(exp(le),exp(le.lo),exp(le.hi))]
-    CE$country <- factor(CE$country,
-                         levels=rev(CE$country),ordered = TRUE)
-    CE[,txt:=paste0(ft(mid)," (",ft(lo)," - ",ft(hi),")")]
+    txtd <- copy(bsmy)
+    txtd[,txt:=paste0(ft(RR.mid)," (",ft(RR.lo)," - ",ft(RR.hi),")")]
 
-    ## graph
-    MAP <-
-      ggplot(CE,aes(country,mid)) +
-      geom_point(size=2) +
-      geom_point(data=siteeffects[is.finite(site.effect)],
-                 aes(country,site.effect,
-                     size=int.number,col=country),
-                 shape=1) +
-      geom_point(data=countryeffects,aes(country,country.effect,
-                                         size=int.number,col=country),
-                 shape=4) +
-      geom_hline(yintercept = 1,lty=2,col='darkgrey')+
-      geom_point(size=2) +
-      geom_errorbar(aes(ymin=lo,ymax=hi),width=0) +
-      geom_text(aes(x=country,y=90,label=txt),size=3)+
+    MAPE <- MAP + geom_text(data=txtd,
+                            aes(x=country,y=0.1,label=txt), #90
+                            size=3,col='black')+
       scale_y_log10(limits=c(5e-2,1.4e2),
-                    label=comma) + #NOTE one DRC site omitted
-      ylab('Rate ratio (log scale)')+
-      xlab('Country')+
-      coord_flip() +
-      theme_classic() + ggpubr::grids()+ ggtitle(ttl)+
-      labs(size='Number (intervention)')+
-      guides(colour="none") +
-      theme(legend.position = 'bottom')
+                    label=comma) +
+      ylab('Rate ratio (log scale)')
 
     ## save
-    grphsE[[glue("{qty}{shhs[page,age]}")]] <- MAP
+    grphsE[[glue("{qty}{shhs[page,age]}")]] <- MAPE
 
+    ## assemble compare methods data
+    fsmy[,method:='frequentist site<country model']
+    bsmy[,method:='Bayesian site<country model']
+    countryeffects[,method:='empirical']
+    RMAR[,method:='country-wise RE meta-analysis']
+    tmp <- rbindlist(list(
+      countryeffects[,.(country,RR=country.effect,
+                        RR.lo,RR.hi,method)],
+      RMAR[,.(country,RR,RR.lo,RR.hi,method)],
+      fsmy[,.(country,RR=RR.mid,RR.lo,RR.hi,method)],
+      bsmy[,.(country,RR=RR.mid,RR.lo,RR.hi,method)]
+    ))
+    tmp[,age:=shhs[page,aged]]
+    tmp[,qty:=ifelse(qty=='px','TPT','ATT')]
+    MCF[[glue("{qty}{shhs[page,age]}")]] <- tmp
   }
 }
 
@@ -138,40 +143,37 @@ GA <- ggarrange(plotlist = grphs,
                 ncol=2,nrow=3,
                 labels = paste0(letters[1:6],")"),
                 common.legend = TRUE,legend='top')
-ggsave(filename=here("graphs/MAll.eps"),w=13,h=12)
-ggsave(GA,filename=here("graphs/MAll.png"),w=13,h=12)
+ggsave(filename=here("graphs/MAll2.eps"),w=13,h=12)
+ggsave(GA,filename=here("graphs/MAll2.png"),w=13,h=12)
 
 GA <- ggarrange(plotlist = grphsE,
                 ncol=2,nrow=3,
                 labels = paste0(letters[1:6],")"),
                 common.legend = TRUE,legend='top')
-ggsave(filename=here("graphs/MAllE.eps"),w=13,h=12)
-ggsave(GA,filename=here("graphs/MAllE.png"),w=13,h=12)
+ggsave(filename=here("graphs/MAllE2.eps"),w=13,h=12)
+ggsave(GA,filename=here("graphs/MAllE2.png"),w=13,h=12)
 
 
-## gather summaries for reporting
-## tx
-T1 <- fread(here('outdata/txMC04.csv'))
-T2 <- fread(here('outdata/txMC514.csv'))
-T3 <- fread(here('outdata/txMC014.csv'))
+## model comparison
+MCF <- rbindlist(MCF)
 
-TALL <- rbindlist(list(
-    T1[country=='SUMMARY',.(`50%`,`2.5%`,`97.5%`)],
-    T2[country=='SUMMARY',.(`50%`,`2.5%`,`97.5%`)],
-    T3[country=='SUMMARY',.(`50%`,`2.5%`,`97.5%`)]
-))
+MCF <- merge(MCF,
+             MCF[method=='Bayesian site<country model',
+                 .(ref=RR,qty,age,country)],
+             by=c('country','age','qty'),
+             all.x=TRUE)
 
-fwrite(format(TALL,digits=3,nsmall=3),file=here('outdata/txALL.csv'))
+GP <- ggplot(MCF,aes(RR,RR/ref,
+                     ymin=RR.lo/ref,ymax=RR.hi/ref,
+                     col=country,shape=method))+
+  geom_hline(yintercept = 1,col=2,alpha=0.5,lty=2)+
+  geom_point()+
+  geom_errorbar(width=0)+
+  scale_x_log10()+  scale_y_log10()+
+  facet_grid(age~qty,scales='free')+
+  theme_bw()+
+  xlab('Incidence rate ratio')+
+  ylab('Ratio compared to reference')
 
-## px
-P1 <- fread(here('outdata/pxMC04.csv'))
-P2 <- fread(here('outdata/pxMC514.csv'))
-P3 <- fread(here('outdata/pxMC014.csv'))
-
-PALL <- rbindlist(list(
-    P1[country=='SUMMARY',.(`50%`,`2.5%`,`97.5%`)],
-    P2[country=='SUMMARY',.(`50%`,`2.5%`,`97.5%`)],
-    P3[country=='SUMMARY',.(`50%`,`2.5%`,`97.5%`)]
-))
-
-fwrite(format(PALL,digits=3,nsmall=3),file=here('outdata/pxALL.csv'))
+ggsave(GP,filename=here("graphs/MCF.png"),w=13,h=12)
+ggsave(GP,filename=here("graphs/MCF.pdf"),w=13,h=12)

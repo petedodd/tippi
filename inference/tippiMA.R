@@ -62,11 +62,6 @@ mm <- glmer(formula = Num ~ (period|country/site),
 ##             data=DM,
 ##             family = poisson(link = "log"))
 
-mm <- glmer(formula = Num ~ (1|site)+(0+period|country/site),
-            offset=log(FT),
-            data=DM,
-            family = poisson(link = "log"))
-
 ## freq smy
 fsmy <- data.table(country=D[,unique(Country)],
                    RR.mid=exp(ranef(mm)$country)[,2])
@@ -84,6 +79,18 @@ smm <- stan_glmer(formula = Num ~ (period|country/site),
 ## MT <- as.matrix(smm,regex_pars = c('periodIntervention'))
 ## str(MT)
 ## colnames(MT)
+## prior_summary(smm)
+smt <- summary(smm)
+nnz <- row.names(smt)
+smt <- as.data.table(smt)
+smt[,variable:=nnz]
+smt <- smt[!variable %in% c('mean_PPD','log-posterior')]
+save(smt,file=gh('outdata/smt_{qty}_{shhs[page,age]}.Rdata'))
+
+## convergence diagnostics
+cdx <- c(smt[,median(Rhat)],smt[,range(Rhat)],
+         smt[,median(n_eff)],smt[,range(n_eff)])
+cat(cdx,file=gh('outdata/cdx_{qty}_{shhs[page,age]}.txt'))
 
 nmz <- c(
   "b[periodIntervention country:1]",

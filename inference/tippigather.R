@@ -14,7 +14,7 @@ source(here('../dataprep/tippifunctions.R'))
 ## shhs[page,age]
 
 ## make single graphs
-grphsE <- grphs <- MCF <- list()
+grphsE <- grphs <- MCF <- CDX <- list()
 for(page in 1:3){
   for(qty in c("tx","px")){
     cat(qty,"...\n")
@@ -30,14 +30,20 @@ for(page in 1:3){
     D[,index:=1:nrow(D)] #for start/ends
     setkey(D,Country,Facility)
 
+    ## convergence dx
+    tmp <- scan(file=gh('outdata/cdx_{qty}_{shhs[page,age]}.txt'))
+    tmp <- as.data.table(tmp)
+    tmp[,variable:=c('median Rhat','min Rhat','max Rhat','median ESS','min ESS','max ESS')]
+    tmp[,qty:=qty]; tmp[,age:=shhs[page,aged]]
+    CDX[[glue('{qty}_{shhs[page,age]}')]] <- tmp
+
     ## empirical data
     ## sites
     siteeffects <- D[,.(site.effect = (Intervention.Num/
                                        Intervention.FT)/
                           (Baseline.Num/Baseline.FT),
                         int.number = Intervention.Num,
-                        country=Country,
-                        index)]
+                        country=Country)]
     fwrite(siteeffects,
            file=gh('outdata/siteeffects_{qty}_{shhs[page,age]}.csv'))
     ## country
@@ -81,7 +87,7 @@ for(page in 1:3){
                            y=RR.mid,ymin=RR.lo,ymax=RR.hi,
                            col=country)) +
       geom_point(size=2) +
-      geom_point(data=fsmy,size=2,col=2,shape=15) +
+      ## geom_point(data=fsmy,size=2,col=2,shape=15) +
       geom_point(data=siteeffects[is.finite(site.effect)],
                  aes(x=country,y=site.effect,
                      size=int.number),
@@ -138,6 +144,15 @@ for(page in 1:3){
   }
 }
 
+## convergence dx
+CDX <- rbindlist(CDX)
+CDX <- dcast(CDX,qty+age~variable,value.var = 'tmp')
+nmz <- names(CDX)
+nmz <- nmz[c(1,2,6,8,4,5,7,3)]
+setcolorder(CDX,nmz)
+fwrite(CDX,file=gh('outdata/CDX.csv'))
+
+
 ## make joined graphs
 GA <- ggarrange(plotlist = grphs,
                 ncol=2,nrow=3,
@@ -162,6 +177,8 @@ MCF <- merge(MCF,
                  .(ref=RR,qty,age,country)],
              by=c('country','age','qty'),
              all.x=TRUE)
+MCF <- MCF[method %in%c('Bayesian site<country model','empirical','country-wise RE meta-analysis')]
+
 
 GP <- ggplot(MCF,aes(RR,RR/ref,
                      ymin=RR.lo/ref,ymax=RR.hi/ref,
@@ -177,3 +194,29 @@ GP <- ggplot(MCF,aes(RR,RR/ref,
 
 ggsave(GP,filename=here("graphs/MCF.png"),w=13,h=12)
 ggsave(GP,filename=here("graphs/MCF.pdf"),w=13,h=12)
+
+
+MCF <- MCF[method!='empirical']
+MCF2 <- dcast(MCF,country+age+qty~method,value.var = c('RR','RR.lo','RR.hi'))
+
+GP <- ggplot(MCF2[age!='0-14'],
+             aes(`RR_Bayesian site<country model`,
+                 `RR_country-wise RE meta-analysis`,
+                 ymin=`RR.lo_country-wise RE meta-analysis`,
+                 ymax=`RR.hi_country-wise RE meta-analysis`,
+                 xmin=`RR.lo_Bayesian site<country model`,
+                 xmax=`RR.hi_Bayesian site<country model`,
+                 col=country))+
+  geom_abline(intercept = 0,slope=1,col=2,alpha=0.5,lty=2)+
+  geom_point()+
+  geom_errorbar(width=0)+
+  geom_errorbarh(height=0)+
+  scale_x_log10()+  scale_y_log10()+
+  facet_wrap(age~qty,scales='free')+
+  theme_bw()+
+  xlab('Bayesian mixed model IRR')+
+  ylab('Country-wise REMA IRR')
+## GP
+
+ggsave(GP,filename=here("graphs/MCF2.png"),w=13,h=12)
+ggsave(GP,filename=here("graphs/MCF2.pdf"),w=13,h=12)

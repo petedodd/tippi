@@ -161,6 +161,11 @@ GA <- ggarrange(plotlist = grphs,
 ggsave(filename=here("graphs/MAll2.eps"),w=13,h=12)
 ggsave(GA,filename=here("graphs/MAll2.png"),w=13,h=12)
 
+
+## TZA tweak
+grphsE[[4]] <- grphsE[[4]]+geom_segment(aes(y=30,yend=100,x=3,xend=3),
+                                        arrow=arrow(length = unit(0.1,"inches")),col="black")
+
 GA <- ggarrange(plotlist = grphsE,
                 ncol=2,nrow=3,
                 labels = paste0(letters[1:6],")"),

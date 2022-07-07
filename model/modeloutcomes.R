@@ -1,27 +1,26 @@
 ## flags for sensitivity analyses
-shell <- FALSE #whether running from shell script or not
+shell <- TRUE #whether running from shell script or not
 if(shell){
   ## running from shell
   args <- commandArgs(trailingOnly=TRUE)
   print(args)
-  SA <- args[1]                  #none,hhc,cdr,txd #which SA?
-  if(SA == 'none') SA <- ''
-  ACF <- args[2]                          #icnluding ACF or not
-  ACF <- as.numeric(ACF)
+  SA <- args[1]                  #none,base/lo/hi,cdr,txd
+  if(SA == 'none'){
+    SA <- ''
+  } 
 } else { #set by hand
   rm(list=ls()) #clear all
   shell <- FALSE #whether running from shell script or not
   ##sensitivity analyses (mostly for PT):
   ## '' = basecase
-  ## 'hhc' = including 10$ as SoC HHC cost
+  ## 'discr'='base'/'lo'/'hi'
   ## 'cdr' = making cdr higher for incidence
   ## 'txd' = making the completion influence tx/pt outcome
-  sacases <- c('','hhc','cdr','txd')
-  SA <- sacases[1]                  #,hhc,cdr,txd #which SA?
-  ACF <- 1                          #icnluding ACF or not
+  sacases <- c('','base','cdr','txd')
+  SA <- sacases[1]
 }
 SAT <- ifelse(SA=='txd','txd','') #SA relevant to Tx
-
+ACF <- 1
 
 ## libraries
 library(here)
@@ -33,14 +32,19 @@ library(ggpubr)
 library(scales)
 library(glue)
 
-
 ## for CEAC plotting
 source(here('../dataprep/tippifunctions.R')) #CEAC & plotting utils
+gh <- function(x) glue(here(x))
 
 ## ===== INPUT DATA
 ## many of these are made by modeldata.R
-load(file=here('data/edat3.Rdata')) #effect data from inference NOTE using empirical atm
+load(file=here('data/edat.Rdata')) #effect data from inference NOTE using empirical atm
 load(file=here('data/LYK.Rdata'))  #LYs discounted
+if(SA %in% c('hi','lo')){
+  sa.drn <- ifelse(SA=='lo',0,5)
+  fn <- gh('data/LYK_{sa.drn}.Rdata')
+  load(fn)
+}
 load(file=here('data/DBC.Rdata')) #cascade ratios for int v bl
 load(file=here('data/ATR.Rdata')) #ATT cascade
 load(file=here('data/ART2.Rdata')) #ATT cascade & costs NOTE 2 update w/costs
@@ -58,11 +62,6 @@ load(file=here('data/CETM.Rdata'))         #CE thresholds
 load(file=here('data/SBEP.Rdata')) #screening by entry point (new) (FB/CB HHCM vs HIV+/- ICF by country)
 load(file=here('data/PD.Rdata'))           #modelling parmeters
 PZ <- parse.parmtable(PD)              #make into parm object
-
-## TODO
-## to check roles of:
-## PTFH, SBEP, BL, HHCM
-## and annotate/differentiate better
 
 ## --- settings
 set.seed(1234)
@@ -128,47 +127,26 @@ fwrite(ptsuccess,file=here('outdata/ptsuccess.csv'))
 
 tmp <- CFRdatam[,.(age,dN,dA)]
 tmp <- melt(tmp,id='age')
-## ggplot(tmp,aes(variable,value)) +
-##     geom_boxplot()+
-##     facet_wrap(~age)
-
-## TODO
-## NOTE isse here that dA for 0-4 is smaller than dN
-CFRdatam[,dA:=pmax(dA,dN)]
 
 ## NOTE see also PSA manipulation specific to PT in second part
 
-
 ## HHCM cascade in aggregate: activity per index
-## NOTE aggregated over mode TODO - think about country-specific model
+## NOTE aggregated over mode
 HHCM <- HHCM[,.(value=sum(value)),by=.(age,activity)]
 ## make relative to index cases with HHCM
 HHCM[,value:=value/HHCM[activity=="index cases with HHCM",value]]
 
-## TODO X-check with modeldata & table 1
-
 ## part1
 ## ================= ATT component ============================
 
-## ## change names DBC so presumptive identified is screened
-## extra <- as.data.table(expand.grid(metric='Screened for symptoms',
-##                                    country=unique(ATR$country)))
-## extra <- merge(extra,DBC[metric=='Presumptive TB identified',
-##                          ##TODO check correct screen number
-##                           .(country,ratio)],
-##                by='country')
-
-## ## int/soc ratios for cascades at different stages
-## E1 <- copy(DBC[,.(country,metric,ratio)])
-## E1 <- rbind(E1,extra)
-## E1 <- merge(E1,CK,by='country')
+## int/soc ratios for cascades at different stages
 E1 <- merge(DBC[,.(country,metric,ratio)],CK,by='country')
 
 ## merge against cascade/cost data
 K <- merge(ART2,E1,by=c('iso3','metric'),all.x = TRUE)
 K[is.na(ratio),ratio:=1] #TB tx or dx
 K[,country:=NULL]
-K[iso3=='ZWE']
+K[iso3=='ZWE'] #check
 ##NOTE this same structure (K) is developed in model data
 ## would be best to ensure consistency and remove from this file
 
@@ -251,12 +229,12 @@ T[,Dcost:=costt.int-costt.soc]
 ## HIV prevalence from BL data
 H <- BL[country %in% CK$country,.(country,hiva=hiv,Tbdx)]
 H <- H[rep(1:nrow(H),each=max(PSA$id))]
-H[,id:=rep(1:max(PSA$id),nrow(CK)-1)] #TODO missing TZA
+H[,id:=rep(1:max(PSA$id),nrow(CK)-1)] #NOTE missing TZA
 H <- rbind(H,H)
 H[,age:=rep(c('0-4','5-14'),each=nrow(H)/2)]
 H[,hiv:=rbeta(nrow(H),hiva,Tbdx)]
 H <- H[,.(id,country,age,hiv)]
-## fill TODO mean for TZA
+## fill mean for TZA
 tmp <- H[,.(country='Tanzania',hiv=mean(hiv)),by=.(id,age)]
 H <- rbind(H,tmp)
 H <- merge(H,CK,by='country')
@@ -272,9 +250,6 @@ T <- merge(T,txsuccess,by='country')    #change in tx success kk
 
 
 ## calculate mean differential CFR: assume all HIV on ART
-## T[,dCFR:=dN*(1-hiv) + dA*hiv]
-## T[,dCFR0:=dN*(1-0) + dA*0]
-
 T[,CFRnotx:=notx*(1-hiv) + notxHA*hiv]
 T[,CFRtx:=ontx*(1-hiv) + ontxHA*hiv]
 T[,CFRtx.soc:=CFRtx]
@@ -284,9 +259,6 @@ if(SA=='txd'){                        #sensitivity analysis
 
 
 ## incremental lives saved - change in implied by RR
-## T[,LS:=(RR-1)*dCFR]
-## T[,LS.hiv0:=(RR-1)*dCFR0]         #sensitivity analysis with no HIV
-
 ## before - 1 ontx:(RR-1) notx
 ## after - RR ontx: 0     notx
 T[,deaths.int:=CFRtx*RR]         #deaths in intervention
@@ -314,8 +286,6 @@ T[iso3=='ZWE' & id==1] #check
 names(T)[names(T)=='Baseline'] <- 'frac'
 names(T)[names(T)=='Intervention'] <- 'fracI'
 
-## TODO make sure that case-finding here does not include HHCM ACF
-## TODO HIV vs non-HIV entrypoint NOTE this needs doing in modeldata.R - use SBEP in creating ART2.Rdata (better name?)
 ## merge in life-expectancy & calculate DALY changes
 T <- merge(T,LYK[,.(iso3,age,LYS,LYS0)],by=c('iso3','age'),all.x=TRUE)
 T[,c('dDALY','dDALY0','dDALY.nohiv'):=.(LYS*LS,LYS0*LS,LYS*LS.hiv0)]
@@ -387,7 +357,7 @@ for(iso in unique(T1$iso3)){
 }
 ceacd <- rbindlist(ceacd)
 
-## make CEAC plot TODO check if need to exclude mean -ves?
+## make CEAC plot
 CEAC <- make.ceac.plot(ceacd,xpad=50)
 if(!shell) CEAC
 
@@ -406,7 +376,7 @@ tmp <- tmp[err==ermin]
 tmp <- tmp[,.(iso3,ceac50=round(x))]
 tmp
 
-fn1 <- glue(here('outdata/CEAC50')) + SAT + '.csv'
+fn1 <- glue(here('outdata/CEAC50')) + SA + '.csv'
 fwrite(tmp,file=fn1)
 
 ## ICERs by country
@@ -466,7 +436,7 @@ icer <- ice[,.(country=country,
                )]
 icer
 
-fn1 <- glue(here('outdata/ICERatt')) + SAT + '.csv'
+fn1 <- glue(here('outdata/ICERatt')) + SA + '.csv'
 fwrite(icer,file=fn1)
 
 
@@ -539,7 +509,7 @@ icers #inspect
 
 icers[age=='0-4',.(country,treated.int,ICER)] #inspect
 
-fn1 <- glue(here('outdata/ICERSatt')) + SAT + '.csv'
+fn1 <- glue(here('outdata/ICERSatt')) + SA + '.csv'
 fwrite(icers,file=fn1)
 
 ## ---- drivers by variable
@@ -637,12 +607,11 @@ PT <- merge(PT,CDRs[,.(iso3,age,id,cdr)],by=c('iso3','age','id'))
 ## age & HIV-route splits for PT
 ## NOTE uncertainty probably not necessary due to large numbers
 ## age splits
-tmp <- INT[metric %in% c("PThhcu5pc","PTHIVentryu5pc")] #TODO check
+tmp <- INT[metric %in% c("PThhcu5pc","PTHIVentryu5pc")]
 tmp <- melt(tmp,id='metric')
 tmp <- dcast(tmp[,.(metric,country=variable,value)],
              country~metric,value='pc')
 tmp <- tmp[country %in% CK$country]
-## TODO check PTFH vs SBEP (think OK - latter about screening)
 hag <- merge(tmp,PTFH[,.(country,ptinhiv)],by='country') #both splits
 hag[,heu5:=ptinhiv*PTHIVentryu5pc];hag[,heo5:=ptinhiv*(1-PTHIVentryu5pc)]
 hag[,hcu5:=(1-ptinhiv)*PThhcu5pc];hag[,hco5:=(1-ptinhiv)*(1-PThhcu5pc)]
@@ -711,10 +680,6 @@ PT[,deathsnoPT:=(
 PT <- merge(PT,ptsuccess,by='country')
 
 ## cases
-## 0 here
-## TODO check correct RR applied for PT
-## PT[,casesPT.hiv:=casesnoPT.hiv*iptRRhivpos]
-## PT[,casesPT.nohiv:=casesnoPT.nohiv*iptRRtstpos]
 
 ## possibly account for changes in incomplete treatment
 PT[,c('fs','fi'):=1.0] #proportion completing
@@ -873,18 +838,15 @@ PT[,c('deathsPrev.soc','deathsPrev.int'):=.(sum(deathsPrev.soc),
 ## check names
 grep('socu',names(PT),value=TRUE)
 
-## TODO check logic (not yet done)
 ## cost (not including thct)
 names(PT)
 
 
 ## --- costs for ACF component
 ## NOTE
-## TODO align the attached to correct overall thru-flo
 PT[,costACF.soc.hh:= ## coprev HHCM'd
       totindexscreen*(Presumptive*`socu_Presumptive TB evaluation` +
                       Diagnosed*`socu_TB treatment`)]
-## TODO check logic and how used
 PT[,costACF.soc.nhh:=
       ## coprev not HHCM'd - not including PHC screening cost
       (totindexscreen*cdr*(Presumptive*`socu_Presumptive TB evaluation` +
@@ -940,8 +902,7 @@ PT[,LS:=-(deaths.int-deaths.soc)]
 ## add in DALYs etc
 PT[,c('dDALY','dDALY0'):=.(LYS*LS,LYS0*LS)]
 
-## TODO check
-## ACF cascade NOTE must include only hh PT
+## ACF cascade
 ## denominators haven't been summed over PT-age, hhc correct split
 ## coprev weighted by hh/ptentry - needs ptentry to weight PT-age
 tmp <- PT[,.(cppt=(sum(coprev*ptentry)/sum(hhc)), #per HH PT initiation
@@ -1233,8 +1194,6 @@ fn <- glue(here('outdata/ICERagept')) + SA + '.' + ACF + '.csv'
 fwrite(picers,file=fn)
 
 
-## TODO cross check cost SOC PT - seems different
-
 ## ================= BOTH components ============================
 ## want weighting during baseline
 PTT <- merge(T1[,.(country,iso3,id,Dcost.att=Dcost,dDALY.att=dDALY)],
@@ -1341,7 +1300,7 @@ PTA[,r.cost.int:=cost.int.ATT+cost.int.TPT] #Cost
 ## differences
 PTA[,r.started.TPT:=numPT.int-numPT.soc]
 PTA[,r.incTB:=cases.int-cases.soc]
-PTA[,r.started.ATT:=(tx.int+ATT.int) - (tx+ATT.soc)] #TODO check not 2x counted
+PTA[,r.started.ATT:=(tx.int+ATT.int) - (tx+ATT.soc)]
 PTA[,r.TBdeaths:=Ddeaths.ATT+Ddeaths.TPT]
 PTA[,r.LYS:=dDALY0.ATT+dDALY0.TPT]
 PTA[,r.dLYS:=dDALY.ATT+dDALY.TPT]
@@ -1411,7 +1370,7 @@ fn1 <- glue(here('graphs/allCEACs')) + SA + '.' + ACF + '.png'
 ggsave(CAPP,file=fn1,w=8,h=15); #ggsave(CAPP,file=fn2,w=8,h=15);
 
 
-## ================= TODO list ============================
+## =============================================
 
 ## NOTE
 ## SHARED tippi folder:

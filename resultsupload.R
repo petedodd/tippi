@@ -23,17 +23,31 @@ upload.to.sheets <- function(basename,filename,sheetid
 upload.to.sheets(here('model/outdata/'),'cascadetab',shid) #first will need to re-authenticate
 
 ## rest can be run as block
-upload.to.sheets(here('model/outdata/'),"ACFcascade.1.csv",shid)
-upload.to.sheets(here('model/outdata/'),'ICERatt',shid)
-upload.to.sheets(here('model/outdata/'),'ICERSatt',shid)
-upload.to.sheets(here('model/outdata/'),"ICERagept.1.csv",shid)
-upload.to.sheets(here('model/outdata/'),"ICERall.1.csv",shid)
-upload.to.sheets(here('model/outdata/'),"ICERpt.1.csv",shid)
-upload.to.sheets(here('model/outdata/'),'PTC',shid)
-upload.to.sheets(here('model/outdata/'),"CEAC50.csv",shid)
-upload.to.sheets(here('model/outdata/'),"CEAC50pt.1.csv",shid)
-upload.to.sheets(here('model/outdata/'),"ptsuccess.csv",shid)
-upload.to.sheets(here('model/outdata/'),"txsuccess.csv",shid)
+flz1 <- c(
+ "ACFcascade.1.csv",   "ACFcascadecdr.1.csv","ACFcascadehi.1.csv",
+ "ACFcascadelo.1.csv", "ACFcascadetxd.1.csv","cascadetab.csv",
+ "CEAC50.csv",         "CEAC50cdr.csv",      "CEAC50hi.csv",
+ "CEAC50lo.csv",       "CEAC50pt.1.csv",     "CEAC50ptcdr.1.csv",
+ "CEAC50pthi.1.csv",   "CEAC50ptlo.1.csv",   "CEAC50pttxd.1.csv",
+ "CEAC50txd.csv",      "ICERagept.1.csv",    "ICERageptcdr.1.csv",
+ "ICERagepthi.1.csv",  "ICERageptlo.1.csv",  "ICERagepttxd.1.csv",
+ "ICERall.1.csv",      "ICERallcdr.1.csv",   "ICERallhi.1.csv",
+ "ICERalllo.1.csv",    "ICERalltxd.1.csv")
+for( fn in flz1)
+  upload.to.sheets(here('model/outdata/'),fn,shid)
+
+Sys.sleep(120) #wait a bit so as not to annoy google
+
+flz2 <- c("ICERatt.csv",
+ "ICERattcdr.csv",     "ICERatthi.csv",      "ICERattlo.csv",
+ "ICERatttxd.csv",     "ICERpt.1.csv",       "ICERptcdr.1.csv",
+ "ICERpthi.1.csv",     "ICERptlo.1.csv",     "ICERpttxd.1.csv",
+ "ICERSatt.csv",       "ICERSattcdr.csv",    "ICERSatthi.csv",
+ "ICERSattlo.csv",     "ICERSatttxd.csv",    "PTC.csv",
+ "ptsuccess.csv",      "txsuccess.csv"
+)
+for( fn in flz2)
+  upload.to.sheets(here('model/outdata/'),fn,shid)
 
 
 ## need article tables

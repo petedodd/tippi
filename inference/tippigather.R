@@ -58,22 +58,18 @@ for(page in 1:3){
 
     ## MA results
     load(gh('outdata/bsmy_{qty}_{shhs[page,age]}.Rdata'))
-    load(gh('outdata/fsmy_{qty}_{shhs[page,age]}.Rdata'))
-    load(gh('outdata/RMAR_{qty}_{shhs[page,age]}.Rdata'))
 
     ## reorder
     lvl <- unique(as.character(D$Country))
     lvl <- rev(lvl)
     siteeffects$country <- factor(siteeffects$country,levels=lvl)
     countryeffects$country <- factor(countryeffects$country,levels=lvl)
-    fsmy$country <- factor(fsmy$country,levels=lvl)
     bsmy$country <- factor(bsmy$country,levels=lvl)
     clz <- RColorBrewer::brewer.pal(length(lvl),'Paired')
 
     ## harmonization
     siteeffects[,c('RR.mid','RR.lo','RR.hi'):=NA]
     countryeffects[,c('RR.mid','RR.lo','RR.hi'):=NA]
-    fsmy[,c('RR.lo','RR.hi'):=NA]
 
     ## --- make graph
     ## title
@@ -87,7 +83,6 @@ for(page in 1:3){
                            y=RR.mid,ymin=RR.lo,ymax=RR.hi,
                            col=country)) +
       geom_point(size=2) +
-      ## geom_point(data=fsmy,size=2,col=2,shape=15) +
       geom_point(data=siteeffects[is.finite(site.effect)],
                  aes(x=country,y=site.effect,
                      size=int.number),
@@ -127,15 +122,11 @@ for(page in 1:3){
     grphsE[[glue("{qty}{shhs[page,age]}")]] <- MAPE
 
     ## assemble compare methods data
-    fsmy[,method:='frequentist site<country model']
     bsmy[,method:='Bayesian site<country model']
     countryeffects[,method:='empirical']
-    RMAR[,method:='country-wise RE meta-analysis']
     tmp <- rbindlist(list(
       countryeffects[,.(country,RR=country.effect,
                         RR.lo,RR.hi,method)],
-      RMAR[,.(country,RR,RR.lo,RR.hi,method)],
-      fsmy[,.(country,RR=RR.mid,RR.lo,RR.hi,method)],
       bsmy[,.(country,RR=RR.mid,RR.lo,RR.hi,method)]
     ))
     tmp[,age:=shhs[page,aged]]
@@ -161,11 +152,6 @@ GA <- ggarrange(plotlist = grphs,
 ggsave(filename=here("graphs/MAll2.eps"),w=13,h=12)
 ggsave(GA,filename=here("graphs/MAll2.png"),w=13,h=12)
 
-
-## TZA tweak
-grphsE[[4]] <- grphsE[[4]]+geom_segment(aes(y=30,yend=100,x=3,xend=3),
-                                        arrow=arrow(length = unit(0.1,"inches")),col="black")
-
 GA <- ggarrange(plotlist = grphsE,
                 ncol=2,nrow=3,
                 labels = paste0(letters[1:6],")"),
@@ -176,13 +162,12 @@ ggsave(GA,filename=here("graphs/MAllE2.png"),w=13,h=12)
 
 ## model comparison
 MCF <- rbindlist(MCF)
-
 MCF <- merge(MCF,
              MCF[method=='Bayesian site<country model',
                  .(ref=RR,qty,age,country)],
              by=c('country','age','qty'),
              all.x=TRUE)
-MCF <- MCF[method %in%c('Bayesian site<country model','empirical','country-wise RE meta-analysis')]
+MCF <- MCF[method %in%c('Bayesian site<country model','empirical')]
 
 
 GP <- ggplot(MCF,aes(RR,RR/ref,
@@ -201,26 +186,23 @@ ggsave(GP,filename=here("graphs/MCF.png"),w=13,h=12)
 ggsave(GP,filename=here("graphs/MCF.pdf"),w=13,h=12)
 
 
-MCF <- MCF[method!='empirical']
+MCF <- MCF[!grepl('meta',method)]
 MCF2 <- dcast(MCF,country+age+qty~method,value.var = c('RR','RR.lo','RR.hi'))
 
 GP <- ggplot(MCF2[age!='0-14'],
              aes(`RR_Bayesian site<country model`,
-                 `RR_country-wise RE meta-analysis`,
-                 ymin=`RR.lo_country-wise RE meta-analysis`,
-                 ymax=`RR.hi_country-wise RE meta-analysis`,
+                 RR_empirical,
                  xmin=`RR.lo_Bayesian site<country model`,
                  xmax=`RR.hi_Bayesian site<country model`,
                  col=country))+
   geom_abline(intercept = 0,slope=1,col=2,alpha=0.5,lty=2)+
   geom_point()+
-  geom_errorbar(width=0)+
   geom_errorbarh(height=0)+
   scale_x_log10()+  scale_y_log10()+
   facet_wrap(age~qty,scales='free')+
   theme_bw()+
   xlab('Bayesian mixed model IRR')+
-  ylab('Country-wise REMA IRR')
+  ylab('Empirical IRR')
 ## GP
 
 ggsave(GP,filename=here("graphs/MCF2.png"),w=13,h=12)

@@ -26,47 +26,7 @@ countrykey
 
 save(countrykey,file=here('data/countrykey.Rdata'))
 
-## ====== EMPIRICAL EFFECT DATA
-## px & tx data
-edat <- list()
-for(qty in c('px','tx')){
-  for(age in c('04','514')){
-    fn1 <- gh('../inference/outdata/siteeffects_{qty}_{age}.csv')
-    fn2 <- gh('../inference/outdata/countryeffects_{qty}_{age}.csv')
-    SE <- fread(fn1)
-    CE <- fread(fn2)
-    SE <- SE[int.number>0 & is.finite(site.effect),.(sdl=sd(log(site.effect))),by=country]
-    CE <- merge(CE,SE,by='country')
-    CE[,le:=log(country.effect)]
-
-    ## use log normal sample with country mean and site variance
-    SS <- list()
-    for(cn in CE[,country]){
-      SS[[cn]] <- data.table(country=cn,
-                             id=1:1e4,
-                             RR=exp(rnorm(1e4,
-                                          CE[country==cn,le],
-                                          sd = CE[country==cn,sdl])))
-    }
-    SS <- rbindlist(SS)
-    SS <- dcast(SS,id~country,value.var = 'RR')
-    SS[,quant:=qty]
-    if(age=='04')
-      SS[,age:='0-4']
-    else
-      SS[,age:='5-14']
-    ind <- glue(qty) + '.' + age
-    edat[[ind]] <- SS
-  }
-}
-edat <- rbindlist(edat)
-edatm <- melt(edat,id.vars = c('id','quant','age'))
-edatm <- as.data.table(edatm)
-edat <- edatm[,.(id,quant,age,country=variable,RR=value)]
-
-save(edat,file=here('data/edat2.Rdata'))
-
-## ====== EFFECT DATA FROM INFERENCE (new)
+## ====== EFFECT DATA FROM INFERENCE
 ## px & tx data
 edat <- list()
 for(qty in c('px','tx')){
@@ -76,7 +36,7 @@ for(qty in c('px','tx')){
     load(fn1)
     colnames(MT) <- countrykey$country
     MT <- as.data.table(MT)
-    MT <- MT[sample(nrow(MT),1e4,replace=TRUE)] #resample to 1e4
+    ## MT <- MT[sample(nrow(MT),1e4,replace=TRUE)] #resample to 1e4
     MT[,id:=1:nrow(MT)]
     SS <- melt(MT,id='id')
     SS[,quant:=qty]
@@ -91,78 +51,46 @@ for(qty in c('px','tx')){
 edat <- rbindlist(edat)
 edat <- edat[,.(id,quant,age,country=variable,RR=value)]
 
-save(edat,file=here('data/edat3.Rdata'))
+save(edat,file=here('data/edat.Rdata'))
 
 
 ## start here (SKIP)
-load(file=here('data/edat3.Rdata'))
+load(file=here('data/edat.Rdata'))
 load(file=here('data/countrykey.Rdata'))
-
-## ## ====== EFFECT DATA FROM INFERENCE
-## ## px & tx data
-## edat <- list()
-## for(qty in c('px','tx')){
-##     for(age in c('04','514')){
-##         fn1 <- glue(here('../inference/outdata/'))
-##         fn1 <- fn1 + qty + 'SS' + age + '.Rdata'
-##         fn2 <- glue(here('../inference/data/'))
-##         fn2 <- fn2 + qty + 'CK.' + age + '.Rdata'
-##         load(fn1)
-##         load(fn2)
-##         CK <- CK[order(cno)]
-##         names(SS) <- CK$country
-##         SS[,quant:=qty]
-##         SS[,id:=1:nrow(SS)]
-##         if(age=='04')
-##             SS[,age:='0-4']
-##         else
-##             SS[,age:='5-14']
-##         ind <- glue(qty) + '.' + age
-##         edat[[ind]] <- SS
-##     }
-## }
-## edat <- rbindlist(edat)
-## edatm <- melt(edat,id.vars = c('id','quant','age'))
-## edatm[,RR:=exp(value)]
-
-## edat <- edatm[,.(id,quant,age,country=variable,RR)]
-
-## save(edat,file=here('data/edat.Rdata'))
-## load(file=here('data/edat.Rdata'))
 
 ## ===== DISCOUNTED LIFE-YEARS TABLES
 ## NOTE discount rate set here
 discount.rate <- 0.03
+DRL <- c(0.03,0,0.05) #for sensitivity analyses
 ## make life-years
-fn <- here('data/LYK.Rdata')
 
-if(TRUE){## if(!file.exists(fn)){
-    ## calculate discounted life-years
-    ## template:
-    LYT <- data.table(age=0:14,
-                      age_group=c(rep('0-4',5),rep('5-14',10)),
-                      LYS=0.0,LYS0=0.0)
-    ## make country/age key
-    LYK <- list()
-    for(iso in cnisos){
-        ## iso <- cn
-        tmp <- copy(LYT)
-        tmp[,iso3:=iso]
-        for(ag in tmp$age) tmp[age==ag,LYS:=discly(iso,ag,2020,
-                                                   dr=discount.rate)]
-        for(ag in tmp$age) tmp[age==ag,LYS0:=discly(iso,ag,2020,
-                                                   dr=0)]
-        LYK[[iso]] <- tmp
-    }
-    LYK <- rbindlist(LYK)
-    ## assume unweighted & collapse
-    LYK <- LYK[,.(LYS=mean(LYS),LYS0=mean(LYS0)),
-               by=.(iso3,age=age_group)]
-    setkey(LYK,age)
-    save(LYK,file=fn)
-} else {
-
-    load(file=fn)
+## calculate discounted life-years
+## template:
+LYT <- data.table(age=0:14,
+                  age_group=c(rep('0-4',5),rep('5-14',10)),
+                  LYS=0.0,LYS0=0.0)
+for(DR in DRL){
+  fn <- here('data/LYK.Rdata')
+  if(DR!=0.03)
+    fn <- gh('data/LYK_{round(1e2*DR)}.Rdata')
+  ## make country/age key
+  LYK <- list()
+  for(iso in cnisos){
+    ## iso <- cn
+    tmp <- copy(LYT)
+    tmp[,iso3:=iso]
+    for(ag in tmp$age) tmp[age==ag,LYS:=discly(iso,ag,2020,
+                                               dr=DR)]
+    for(ag in tmp$age) tmp[age==ag,LYS0:=discly(iso,ag,2020,
+                                                dr=0)]
+    LYK[[iso]] <- tmp
+  }
+  LYK <- rbindlist(LYK)
+  ## assume unweighted & collapse
+  LYK <- LYK[,.(LYS=mean(LYS),LYS0=mean(LYS0)),
+             by=.(iso3,age=age_group)]
+  setkey(LYK,age)
+  save(LYK,file=fn)
 }
 
 
@@ -175,7 +103,7 @@ SBEP <- SBEP[order(iso3)]
 save(SBEP,file=here('data/SBEP.Rdata'))
 
 ## blextract1.csv  blextract2.csv  resoure.int.csv
-## baseline cascade data TODO from report
+## baseline cascade data from report
 ## bl extract 1:
 ## pt, pthiv from table O3.3 pg 15
 fn <- here('indata/blextract1.csv')
@@ -200,7 +128,6 @@ names(RI)[names(RI)=='CDI'] <- "Cote d'Ivoire"
 RIM <- melt(RI,id='metric')
 names(RIM)[2] <- 'country'
 RIM <- RIM[metric!='Number of sites reporting']
-
 RIM[,unique(metric)]
 
 ## NOTE make sure pc are correct for way used
@@ -903,8 +830,6 @@ setcolorder(tmp5,names(Table1PT))
 ## Presumptive TB
 ## NOTE this does this & next, but it is same across countries
 ## NOTE this is also based on BL data for presum/prevalence - used to model
-## TODO query whether best data available by country
-## TODO these are the relevant qties used in model
 tmpr <- B2[metric %in%
            c('Number of Index cases with contact tracing done',
              'Presumptive TB identified','Diagnosed with TB')]
@@ -948,11 +873,3 @@ Table1PT <- rbind(Table1PT,Table1PTxtraB)
 
 save(Table1PT,file=here('data/Table1PT.Rdata'))
 
-
-## Cost per PT initiation, $ (SD)
-## TODO -- see model script
-
-
-
-## TODO questions
-## HIV mix -- different under intervention?

@@ -34,33 +34,34 @@ library(glue)
 
 ## for CEAC plotting
 source(here('../dataprep/tippifunctions.R')) #CEAC & plotting utils
-gh <- function(x) glue(here(x))
+modpath <- here('model')
+gh <- function(x) glue(here(modpath,x))
 
 ## ===== INPUT DATA
 ## many of these are made by modeldata.R
-load(file=here('data/edat.Rdata')) #effect data from inference NOTE using empirical atm
-load(file=here('data/LYK.Rdata'))  #LYs discounted
+load(file=gh('data/edat.Rdata')) #effect data from inference NOTE using empirical atm
+load(file=gh('data/LYK.Rdata'))  #LYs discounted
 if(SA %in% c('hi','lo')){
   sa.drn <- ifelse(SA=='lo',0,5)
   fn <- gh('data/LYK_{sa.drn}.Rdata')
   load(fn)
 }
-load(file=here('data/DBC.Rdata')) #cascade ratios for int v bl
-load(file=here('data/ATR.Rdata')) #ATT cascade
-load(file=here('data/ART2.Rdata')) #ATT cascade & costs NOTE 2 update w/costs
-load(file=here('data/CDR.Rdata')) #CDR
-load(file=here('data/H.Rdata')) #HIV by country from baseline data
-load(file=here('data/PTFH.Rdata')) #PT from HIV split
-load(file=here('data/PTC.Rdata')) #PT cascade: HH screened per PT init
-load(file=here('data/CD.Rdata'))  #rawer cost data (made from csv if modeldata.R)
-load(file=here('data/ASM.Rdata')) #age splits from pre/post data
-load(file=here('data/BC.Rdata')) #PT v ATT split from pre/post data
-load(file=here('data/HHCM.Rdata'))#HHCM cascade screen:presume:dx x FB/CB
-load(file=here('data/BL.Rdata'))#BL data: tbdx, hiv, prtb, Xpert, pt, pthiv
-load(file=here('data/INT.Rdata')) #INT cascade data from spreadsheet
-load(file=here('data/CETM.Rdata'))         #CE thresholds
-load(file=here('data/SBEP.Rdata')) #screening by entry point (new) (FB/CB HHCM vs HIV+/- ICF by country)
-load(file=here('data/PD.Rdata'))           #modelling parmeters
+load(file=gh('data/DBC.Rdata')) #cascade ratios for int v bl
+load(file=gh('data/ATR.Rdata')) #ATT cascade
+load(file=gh('data/ART2.Rdata')) #ATT cascade & costs NOTE 2 update w/costs
+load(file=gh('data/CDR.Rdata')) #CDR
+load(file=gh('data/H.Rdata')) #HIV by country from baseline data
+load(file=gh('data/PTFH.Rdata')) #PT from HIV split
+load(file=gh('data/PTC.Rdata')) #PT cascade: HH screened per PT init
+load(file=gh('data/CD.Rdata'))  #rawer cost data (made from csv if modeldata.R)
+load(file=gh('data/ASM.Rdata')) #age splits from pre/post data
+load(file=gh('data/BC.Rdata')) #PT v ATT split from pre/post data
+load(file=gh('data/HHCM.Rdata'))#HHCM cascade screen:presume:dx x FB/CB
+load(file=gh('data/BL.Rdata'))#BL data: tbdx, hiv, prtb, Xpert, pt, pthiv
+load(file=gh('data/INT.Rdata')) #INT cascade data from spreadsheet
+load(file=gh('data/CETM.Rdata'))         #CE thresholds
+load(file=gh('data/SBEP.Rdata')) #screening by entry point (new) (FB/CB HHCM vs HIV+/- ICF by country)
+load(file=gh('data/PD.Rdata'))           #modelling parmeters
 PZ <- parse.parmtable(PD)              #make into parm object
 
 ## --- settings
@@ -121,8 +122,8 @@ ptsuccess <- data.table(
 )
 
 ## write out
-fwrite(txsuccess,file=here('outdata/txsuccess.csv'))
-fwrite(ptsuccess,file=here('outdata/ptsuccess.csv'))
+fwrite(txsuccess,file=gh('outdata/txsuccess.csv'))
+fwrite(ptsuccess,file=gh('outdata/ptsuccess.csv'))
 
 
 tmp <- CFRdatam[,.(age,dN,dA)]
@@ -181,8 +182,8 @@ GP <- ggplot(KAM,aes(iso3,value,fill=metric)) +
   theme(axis.text.x = element_text(angle = 45, vjust = 1.0, hjust=1))
 if(!shell) GP
 
-ggsave(GP,file=here('graphs/cost_cascade.png'),h=6,w=10)
-## ggsave(GP,file=here('graphs/cost_cascade.pdf'),h=6,w=10)
+ggsave(GP,file=gh('graphs/cost_cascade.png'),h=6,w=10)
+## ggsave(GP,file=gh('graphs/cost_cascade.pdf'),h=6,w=10)
 
 
 GP <- ggplot(KAM[variable=='Intervention'],
@@ -197,8 +198,8 @@ GP <- ggplot(KAM[variable=='Intervention'],
 if(!shell) GP
 
 
-ggsave(GP,file=here('graphs/cost_cascade2.png'),h=6,w=9)
-## ggsave(GP,file=here('graphs/cost_cascade2.pdf'),h=6,w=9)
+ggsave(GP,file=gh('graphs/cost_cascade2.png'),h=6,w=9)
+## ggsave(GP,file=gh('graphs/cost_cascade2.pdf'),h=6,w=9)
 
 
 ## compute total costs & SD
@@ -341,8 +342,8 @@ GP <- ggplot(T1,aes(dDALY,Dcost)) +
     theme(legend.position = "top" )
 if(!shell) GP
 
-fn1 <- glue(here('graphs/CEall')) + SAT + '.png'
-## fn2 <- glue(here('graphs/CEall')) + SAT + '.pdf' 
+fn1 <- gh('graphs/CEall') + SAT + '.png'
+## fn2 <- gh('graphs/CEall') + SAT + '.pdf' 
 ggsave(GP,file=fn1,w=10,h=10); ## ggsave(GP,file=fn2,w=10,h=10)
 ## PDF versions too big
 
@@ -362,8 +363,8 @@ CEAC <- make.ceac.plot(ceacd,xpad=50)
 if(!shell) CEAC
 
 
-fn1 <- glue(here('graphs/CEAC')) + SAT + '.png'
-## fn2 <- glue(here('graphs/CEAC')) + SAT + '.pdf'
+fn1 <- gh('graphs/CEAC') + SAT + '.png'
+## fn2 <- gh('graphs/CEAC') + SAT + '.pdf'
 ggsave(CEAC,file=fn1,w=7,h=7); ## ggsave(CEAC,file=fn2,w=7,h=7)
 
 
@@ -376,7 +377,7 @@ tmp <- tmp[err==ermin]
 tmp <- tmp[,.(iso3,ceac50=round(x))]
 tmp
 
-fn1 <- glue(here('outdata/CEAC50')) + SA + '.csv'
+fn1 <- gh('outdata/CEAC50') + SA + '.csv'
 fwrite(tmp,file=fn1)
 
 ## ICERs by country
@@ -436,7 +437,7 @@ icer <- ice[,.(country=country,
                )]
 icer
 
-fn1 <- glue(here('outdata/ICERatt')) + SA + '.csv'
+fn1 <- gh('outdata/ICERatt') + SA + '.csv'
 fwrite(icer,file=fn1)
 
 
@@ -448,7 +449,7 @@ Table2ATT <- icer[,.(country,treated.soc,cost.soc,treated.int,cost.int,
                      diff.LYS=LY0.dif,diff.dLYS=LY.dif,
                      diff.cost=cost.dif,ICER)]
 
-fn1 <- glue(here('outdata/Table2ATT')) + SAT + '.Rdata'
+fn1 <- gh('outdata/Table2ATT') + SAT + '.Rdata'
 save(Table2ATT,file=fn1)
 
 ## --- ICER tables  by age (as above)
@@ -509,7 +510,7 @@ icers #inspect
 
 icers[age=='0-4',.(country,treated.int,ICER)] #inspect
 
-fn1 <- glue(here('outdata/ICERSatt')) + SA + '.csv'
+fn1 <- gh('outdata/ICERSatt') + SA + '.csv'
 fwrite(icers,file=fn1)
 
 ## ---- drivers by variable
@@ -545,8 +546,8 @@ GP <- ggplot(XYc,aes(value,Dcost,col=iso3)) +
   facet_wrap(~variable,scales = 'free')
 if(!shell) GP
 
-ggsave(GP,file=here('graphs/drivers_att_cost2.png'),h=10,w=10)
-## ggsave(GP,file=here('graphs/drivers_att_cost2.pdf'),h=10,w=10)
+ggsave(GP,file=gh('graphs/drivers_att_cost2.png'),h=10,w=10)
+## ggsave(GP,file=gh('graphs/drivers_att_cost2.pdf'),h=10,w=10)
 
 ## DALYs
 GP <- ggplot(XYc,aes(value,dDALY,col=iso3)) +
@@ -554,8 +555,8 @@ GP <- ggplot(XYc,aes(value,dDALY,col=iso3)) +
   facet_wrap(~variable,scales = 'free')
 if(!shell) GP
 
-ggsave(GP,file=here('graphs/drivers_att_DALY.png'),h=10,w=10)
-## ggsave(GP,file=here('graphs/drivers_att_DALY.pdf'),h=10,w=10)
+ggsave(GP,file=gh('graphs/drivers_att_DALY.png'),h=10,w=10)
+## ggsave(GP,file=gh('graphs/drivers_att_DALY.pdf'),h=10,w=10)
 
 
 
@@ -631,7 +632,7 @@ hago[,(vec):=lapply(.SD, function(x) 100*x), .SDcols = vec]
 vec <- names(hago)[2:6]
 hago[,(vec):=lapply(.SD, function(x) round(x,2)), .SDcols = vec]
 
-fwrite(hago,file=here('outdata/PTC.csv')) #save as output too
+fwrite(hago,file=gh('outdata/PTC.csv')) #save as output too
 
 ## reformatting into parts of Table 1?
 
@@ -918,7 +919,7 @@ clz <- grep('cp',names(tmp),value=TRUE)
 acfcascade <- tmp[,lapply(.SD,function(x)1e2*mean(x)),
                   by=country,.SDcols=clz]
 
-fn <- glue(here('outdata/ACFcascade')) + SA + '.' + ACF + '.csv'
+fn <- gh('outdata/ACFcascade') + SA + '.' + ACF + '.csv'
 fwrite(acfcascade,file=fn)
 
 ## adding in ACF if included
@@ -993,8 +994,8 @@ GP <- ggplot(PT1,aes(dDALY,Dcost)) +
 if(!shell) GP
 
 ## save out
-fn1 <- glue(here('graphs/CEallPT')) + SA + '.' + ACF + '.png'
-## fn2 <- glue(here('graphs/CEallPT')) + SA + '.' + ACF + '.pdf'
+fn1 <- gh('graphs/CEallPT') + SA + '.' + ACF + '.png'
+## fn2 <- gh('graphs/CEallPT') + SA + '.' + ACF + '.pdf'
 ggsave(GP,file=fn1,w=10,h=10); ## ggsave(GP,file=fn2,w=10,h=10)
 
 
@@ -1014,8 +1015,8 @@ PCEAC <- make.ceac.plot(pceacd,xpad=50)
 if(!shell) PCEAC
 
 ## save out
-fn1 <- glue(here('graphs/CEACpt')) + SA + '.' + ACF + '.png'
-## fn2 <- glue(here('graphs/CEACpt')) + SA + '.' + ACF + '.pdf'
+fn1 <- gh('graphs/CEACpt') + SA + '.' + ACF + '.png'
+## fn2 <- gh('graphs/CEACpt') + SA + '.' + ACF + '.pdf'
 ggsave(PCEAC,file=fn1,w=10,h=10); ## ggsave(PCEAC,file=fn2,w=10,h=10)
 
 
@@ -1026,7 +1027,7 @@ tmp[,ermin:=min(err),by=iso3]
 tmp <- tmp[err==ermin]
 tmp <- tmp[,.(iso3,ceac50=round(x))]
 tmp
-fn <- glue(here('outdata/CEAC50pt')) + SA + '.' + ACF + '.csv'
+fn <- gh('outdata/CEAC50pt') + SA + '.' + ACF + '.csv'
 fwrite(tmp,file=fn)
 
 ## ICERs by country
@@ -1080,7 +1081,7 @@ Table1PTcost[,c('condition',
               'variable'):=.('PT',
                              'Cost per PT initiation, $ (SD)')]
 
-save(Table1PTcost,file=here('data/Table1PTcost.Rdata'))
+save(Table1PTcost,file=gh('data/Table1PTcost.Rdata'))
 
 
 ## multiply most by 100
@@ -1106,7 +1107,7 @@ picer <- pice[is.finite(cost.soc),.(country=country,
                )]
 picer
 
-fn <- glue(here('outdata/ICERpt')) + SA +'.' + ACF + '.csv'
+fn <- gh('outdata/ICERpt') + SA +'.' + ACF + '.csv'
 fwrite(picer,file=fn)
 
 ## --- PT stuff for Table 2
@@ -1121,7 +1122,7 @@ Table2PT <- picer[,.(country,
                       diff.cost=Dcost,
                       ICER)]
 
-fn <- glue(here('outdata/Table2PT')) + SA +'.' + ACF + '.Rdata'
+fn <- gh('outdata/Table2PT') + SA +'.' + ACF + '.Rdata'
 save(Table2PT,file=fn)
 
 
@@ -1190,7 +1191,7 @@ picers
 
 picers[age=='0-4',.(country,numPT.int,ICER)]
 
-fn <- glue(here('outdata/ICERagept')) + SA + '.' + ACF + '.csv'
+fn <- gh('outdata/ICERagept') + SA + '.' + ACF + '.csv'
 fwrite(picers,file=fn)
 
 
@@ -1218,8 +1219,8 @@ GP <- ggplot(PTT,aes(dDALY,Dcost)) +
 if(!shell) GP
 
 ## save out
-fn1 <- glue(here('graphs/CEallALL')) + SA + '.' + ACF + '.png'
-## fn2 <- glue(here('graphs/CEallALL')) + SA + '.' + ACF + '.pdf'
+fn1 <- gh('graphs/CEallALL') + SA + '.' + ACF + '.png'
+## fn2 <- gh('graphs/CEallALL') + SA + '.' + ACF + '.pdf'
 ggsave(GP,file=fn1,w=10,h=10); ## ggsave(GP,file=fn2,w=10,h=10)
 
 
@@ -1239,8 +1240,8 @@ BCEAC <- make.ceac.plot(bceacd,xpad=50)
 if(!shell) BCEAC
 
 ## save out
-fn1 <- glue(here('graphs/CEACall')) + SA + '.' + ACF + '.png'
-## fn2 <- glue(here('graphs/CEACall')) + SA + '.' + ACF + '.pdf'
+fn1 <- gh('graphs/CEACall') + SA + '.' + ACF + '.png'
+## fn2 <- gh('graphs/CEACall') + SA + '.' + ACF + '.pdf'
 ggsave(BCEAC,file=fn1,w=10,h=10); ## ggsave(PCEAC,file=fn2,w=10,h=10)
 
 
@@ -1252,7 +1253,7 @@ icebrr <- iceb[,.(country,iso3,
                   ICER = format(round(ICER),big.mark = ',') )]
 icebrr
 
-fn <- glue(here('outdata/ICERall')) + SA + '.' + ACF + '.csv'
+fn <- gh('outdata/ICERall') + SA + '.' + ACF + '.csv'
 fwrite(icebrr,file=fn)
 
 PTT
@@ -1346,7 +1347,7 @@ bicer[,r.start.soc:='100'] #cosmetic/clarity correction
 
 Table2both <- bicer
 
-fn <- glue(here('outdata/Table2both')) + SA +'.' + ACF + '.Rdata'
+fn <- gh('outdata/Table2both') + SA +'.' + ACF + '.Rdata'
 save(Table2both,file=fn)
 
 ## ---- combined CEAC plot ---
@@ -1365,8 +1366,8 @@ CAPP <- ggarrange(plotlist = CAP,
                   labels="AUTO",
           common.legend = TRUE,legend="bottom",ncol=1)
 
-fn1 <- glue(here('graphs/allCEACs')) + SA + '.' + ACF + '.png'
-## fn2 <- glue(here('graphs/allCEACs')) + SA + '.' + ACF + '.pdf'
+fn1 <- gh('graphs/allCEACs') + SA + '.' + ACF + '.png'
+## fn2 <- gh('graphs/allCEACs') + SA + '.' + ACF + '.pdf'
 ggsave(CAPP,file=fn1,w=8,h=15); #ggsave(CAPP,file=fn2,w=8,h=15);
 
 

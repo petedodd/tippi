@@ -70,7 +70,7 @@ ceactop <- 3e3 #top to plot in CEAC curves
 ## country key
 CK <- data.table(iso3=unique(LYK$iso3)) #NOTE this is where the countries involved are coded
 CK[iso3=='CMR',country:='Cameroon']
-CK[iso3=='CIV',country:="Cote d'Ivoire"]
+CK[iso3=='CIV',country:="Côte d'Ivoire"]
 CK[iso3=='COD',country:='DRC']
 CK[iso3=='KEN',country:='Kenya']
 CK[iso3=='LSO',country:='Lesotho']

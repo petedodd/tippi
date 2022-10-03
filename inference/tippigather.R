@@ -5,10 +5,11 @@ library(ggplot2)
 library(scales)
 library(ggpubr)
 library(glue)
-gh <- function(x) glue(here(x))
 dg <- 1
 ft <- function(x)format(x,digits=dg,nsmall=dg)
-source(here('../dataprep/tippifunctions.R'))
+source(here('dataprep/tippifunctions.R'))
+infpath <- here('inference')
+gh <- function(x) glue(here(infpath,x))
 
 ## qty <- 'tx'; page <- 2
 ## shhs[page,age]
@@ -21,9 +22,9 @@ for(page in 1:3){
     ## --- read data
     ## load data
     if(qty=='tx'){ #select qty
-      D <- fread(here('../dataprep/outdata/T.csv'))
+      D <- fread(gh('../dataprep/outdata/T.csv'))
     } else{
-      D <- fread(here('../dataprep/outdata/P.csv'))
+      D <- fread(gh('../dataprep/outdata/P.csv'))
     }
     D <- D[age==shhs[page,aged]] #select age
     D[,Facility:=site]
@@ -59,12 +60,12 @@ for(page in 1:3){
     ## MA results
     load(gh('outdata/bsmy_{qty}_{shhs[page,age]}.Rdata'))
 
-    ## reorder
-    lvl <- unique(as.character(D$Country))
+    ## reorder & add circonflex
+    lvl <- unique(as.character(gsub("ote","ôte",D$Country)))
     lvl <- rev(lvl)
-    siteeffects$country <- factor(siteeffects$country,levels=lvl)
-    countryeffects$country <- factor(countryeffects$country,levels=lvl)
-    bsmy$country <- factor(bsmy$country,levels=lvl)
+    siteeffects$country <- factor(gsub("ote","ôte",siteeffects$country),levels=lvl)
+    countryeffects$country <- factor(gsub("ote","ôte",countryeffects$country),levels=lvl)
+    bsmy$country <- factor(gsub("ote","ôte",bsmy$country),levels=lvl)
     clz <- RColorBrewer::brewer.pal(length(lvl),'Paired')
 
     ## harmonization
@@ -149,15 +150,15 @@ GA <- ggarrange(plotlist = grphs,
                 ncol=2,nrow=3,
                 labels = paste0(letters[1:6],")"),
                 common.legend = TRUE,legend='top')
-ggsave(filename=here("graphs/MAll2.eps"),w=13,h=12)
-ggsave(GA,filename=here("graphs/MAll2.png"),w=13,h=12)
+ggsave(filename=gh("graphs/MAll2.eps"),w=13,h=12)
+ggsave(GA,filename=gh("graphs/MAll2.png"),w=13,h=12)
 
 GA <- ggarrange(plotlist = grphsE,
                 ncol=2,nrow=3,
                 labels = paste0(letters[1:6],")"),
                 common.legend = TRUE,legend='top')
-ggsave(filename=here("graphs/MAllE2.eps"),w=13,h=12)
-ggsave(GA,filename=here("graphs/MAllE2.png"),w=13,h=12)
+ggsave(filename=gh("graphs/MAllE2.eps"),w=13,h=12)
+ggsave(GA,filename=gh("graphs/MAllE2.png"),w=13,h=12)
 
 
 ## model comparison
@@ -182,8 +183,8 @@ GP <- ggplot(MCF,aes(RR,RR/ref,
   xlab('Incidence rate ratio')+
   ylab('Ratio compared to reference')
 
-ggsave(GP,filename=here("graphs/MCF.png"),w=13,h=12)
-ggsave(GP,filename=here("graphs/MCF.pdf"),w=13,h=12)
+ggsave(GP,filename=gh("graphs/MCF.png"),w=13,h=12)
+ggsave(GP,filename=gh("graphs/MCF.pdf"),w=13,h=12)
 
 
 MCF <- MCF[!grepl('meta',method)]
@@ -205,5 +206,5 @@ GP <- ggplot(MCF2[age!='0-14'],
   ylab('Empirical IRR')
 ## GP
 
-ggsave(GP,filename=here("graphs/MCF2.png"),w=13,h=12)
-ggsave(GP,filename=here("graphs/MCF2.pdf"),w=13,h=12)
+ggsave(GP,filename=gh("graphs/MCF2.png"),w=13,h=12)
+ggsave(GP,filename=gh("graphs/MCF2.pdf"),w=13,h=12)

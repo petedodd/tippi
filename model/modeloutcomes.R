@@ -568,10 +568,6 @@ if(!shell) GP
 ggsave(GP,file=gh('graphs/drivers_att_DALY.png'),h=10,w=10)
 ## ggsave(GP,file=gh('graphs/drivers_att_DALY.pdf'),h=10,w=10)
 
-## check
-T1[,1e2*table(LS>0,tx>1)/nrow(T1)]
-
-
 ## part2
 ## ================= PT component ============================
 ## needs edat, PSA, INT
@@ -654,23 +650,25 @@ PT <- merge(PT,hag,by=c('country','age'),all.x = TRUE)
 ## NOTE this is normalized over route x age - age-stratified results will need renorm'n:
 PT[,ptentry:=hentry+hhc]  #denominator for age-stratified calx
 
-
 ## ARI assumption for risks in HIV entry-point cohort
 PT <- merge(PT,PSA[,.(id,ari)],by='id',all.x=TRUE)
 
 ## === outcomes
 ## NOTE now normalizing by age, for consistency with ATT
 
+## NOTE include split to hep = HIV-clinic entry-point
 ## --- no PT outcomes on average
 ## cases - stratified by HIV for CFR
-PT[,casesnoPT.hiv:=(hhc/ptentry)*(   #HH route
-  (LTBI*prog)*                       #progn - bl
-  (HHhivprev*hivpi*artp)             #HIV modification
-) +
+PT[,casesnoPT.hiv.hep:=
   (hentry/ptentry) * (               #HIV-entry
     ari*prog*                        #prog - bl
     hivpi*artp                       #HIV modification
   )
+]
+PT[,casesnoPT.hiv:=(hhc/ptentry)*(   #HH route
+  (LTBI*prog)*                       #progn - bl
+  (HHhivprev*hivpi*artp)             #HIV modification
+) + casesnoPT.hiv.hep
 ]
 PT[,casesnoPT.nohiv:=(hhc/ptentry)*(   #HH route
   (LTBI*prog)*                         #progn - bl
@@ -681,12 +679,14 @@ PT[,casesnoPT:=casesnoPT.hiv + casesnoPT.nohiv]
 
 ## treatment
 PT[,attnoPT:=(casesnoPT.hiv+casesnoPT.nohiv) * cdr]
+PT[,attnoPT.hep:=casesnoPT.hiv.hep * cdr]
 
 ## deaths
 PT[,deathsnoPT:=(
   casesnoPT.hiv*(cdr*ontxHA+(1-cdr)*notxHA)+
   casesnoPT.nohiv*(cdr*ontx+(1-cdr)*notx)
 )]
+PT[,deathsnoPT.hep:=casesnoPT.hiv.hep*(cdr*ontxHA+(1-cdr)*notxHA)]
 
 
 ## ---  PT outcomes on average
@@ -702,15 +702,17 @@ if(SA=='txd'){ #sensitivity analysis around completion
 
 ## NOTE these are separated SOC/INT to allow SA around completion improvement
 ## SOC
+PT[,casesPT.hiv.soc.hep:=
+  (hentry/ptentry) * (               #HIV-entry
+    ari*prog*                        #prog - bl
+    hivpi*artp                       #HIV modification
+  )*(iptRRhivpos*fs+1-fs)                   #PT
+]
 PT[,casesPT.hiv.soc:=(hhc/ptentry)*(   #HH route
     (LTBI*prog)*         #bl progn 
     (HHhivprev*hivpi*artp)* #HIV/PT modification
     (iptRRtstpos*fs + 1-fs)  #PT modification
-) +
-    (hentry/ptentry) * (               #HIV-entry
-        ari*prog*                        #prog - bl
-        hivpi*artp                       #HIV modification
-    )*(iptRRhivpos*fs+1-fs)                   #PT
+) + casesPT.hiv.soc.hep      #HEP
 ]
 PT[,casesPT.nohiv.soc:=(hhc/ptentry)*(   #HH route
     (LTBI*prog)*                         #progn - bl
@@ -721,23 +723,28 @@ PT[,casesPT.soc:=casesPT.hiv.soc + casesPT.nohiv.soc]
 
 ## treatment
 PT[,attPT.soc:=(casesPT.hiv.soc+casesPT.nohiv.soc) * cdr]
+PT[,attPT.soc.hep:=casesPT.hiv.soc.hep * cdr]
 
 ## deaths
 PT[,deathsPT.soc:=(
   casesPT.hiv.soc*(cdr*ontxHA+(1-cdr)*notxHA)+
   casesPT.nohiv.soc*(cdr*ontx+(1-cdr)*notx)
 )]
+PT[,deathsPT.soc.hep:=casesPT.hiv.soc.hep*(cdr*ontxHA+(1-cdr)*notxHA)]
 
 ## INT
+PT[,casesPT.hiv.int.hep:=
+  (hentry/ptentry) * (               #HIV-entry
+    ari*prog*                        #prog - bl
+    hivpi*artp                       #HIV modification
+  )*(iptRRhivpos*fi+1-fi)                        #PT
+]
 PT[,casesPT.hiv.int:=(hhc/ptentry)*(   #HH route
     (LTBI*prog)*         #bl progn 
     (HHhivprev*hivpi*artp)* ## HIV modification
     (iptRRtstpos*fi+1-fi)  #PT modification
 ) +
-    (hentry/ptentry) * (               #HIV-entry
-        ari*prog*                        #prog - bl
-        hivpi*artp                       #HIV modification
-    )*(iptRRhivpos*fi+1-fi)                        #PT
+  casesPT.hiv.int.hep
 ]
 PT[,casesPT.nohiv.int:=(hhc/ptentry)*(   #HH route
     (LTBI*prog)*                         #progn - bl
@@ -748,12 +755,15 @@ PT[,casesPT.int:=casesPT.hiv.int + casesPT.nohiv.int]
 
 ## treatment
 PT[,attPT.int:=(casesPT.hiv.int+casesPT.nohiv.int) * cdr]
+PT[,attPT.int.hep:=casesPT.hiv.int.hep * cdr]
 
 ## deaths
 PT[,deathsPT.int:=(
     casesPT.hiv.int*(cdr*ontxHA+(1-cdr)*notxHA)+
     casesPT.nohiv.int*(cdr*ontx+(1-cdr)*notx)
 )]
+PT[,deathsPT.int.hep:=casesPT.hiv.int.hep*(cdr*ontxHA+(1-cdr)*notxHA)]
+
 
 ##  --- costs
 ## merge in traced HHs per PT initiation
@@ -770,6 +780,7 @@ CDlong[,socu:=rgamma(nrow(CDlong),shape=(uc.soc/(uc.soc.sd+1e-6))^2,
 CDlong[,intu:=socu + uc.int] #NOTE intu aren't incremental now
 CDlong <- CDlong[,.(iso3,Activity,id,socu,intu)] #restrict
 CDlong <- dcast(CDlong,iso3+id~Activity,value.var=c('socu','intu'))#shape
+names(CDlong)
 
 ## merges cost data into activity data
 PT <- merge(PT,CDlong,by=c('iso3','id'),all.x=TRUE)    #costs
@@ -780,26 +791,27 @@ SBEP[,.(iso3,CBhhcm,FBhhcm)] # raw numbers
 CvF <- SBEP[rep(1:nrow(SBEP),each=max(PT$id)),.(iso3,CBhhcm,FBhhcm)]
 CvF[,id:=rep(1:max(PT$id),nrow(SBEP))]
 CvF[,propFB:=rbeta(nrow(CvF),shape1=FBhhcm,shape2=CBhhcm)] #use numbers in beta dist
-
-## TODO TZA not here
-tmp <- CvF[,.(iso3='TZA',propFB=mean(propFB)),by=id]
-CvF <- rbind(CvF[,.(iso3,id,propFB)],tmp)
-
-PT <- merge(PT,CvF,by=c('iso3','id'))
+PT <- merge(PT,CvF,by=c('iso3','id'))                      #merge in
 
 ## traceperhhcpt - is households screened per PT init
 ## (check same as hhci)
-## TODO check unit costs are per HH
-PT[,costPT.soc:=
-      (1-propFB)*traceperhhcpt*`socu_Community hhci`+   #comm CT
-      (propFB)*traceperhhcpt*`socu_Facility hhci`+      #facility CT
-      `socu_TPT treatment`                              #TPT
-   ]
+## NOTE unit costs are per HH
+PT[,costPT.soc:= (
+      (hhc/ptentry) * (
+        (1-propFB)*traceperhhcpt*`socu_Community hhci`+   #comm CT
+        (propFB)*traceperhhcpt*`socu_Facility hhci`       #facility CT
+        ) +
+      (hentry/ptentry) * `socu_Screening in HIV clinic`+  #HEP
+      `socu_TPT treatment`                                #TPT
+ )]
 
 PT[,costPT.int:=
-      (1-propFB)*traceperhhcpt*`intu_Community hhci`+   #comm CT
-      (propFB)*traceperhhcpt*`intu_Facility hhci`+      #facility CT
-      `intu_TPT treatment`                              #TPT
+      (hhc/ptentry) * (
+        (1-propFB)*traceperhhcpt*`intu_Community hhci`+   #comm CT
+        (propFB)*traceperhhcpt*`intu_Facility hhci`       #facility CT
+        ) +
+      (hentry/ptentry) * `intu_Screening in HIV clinic`+  #HEP
+      `intu_TPT treatment`                                #TPT
    ]
 
 
@@ -1373,7 +1385,6 @@ save(Table2both,file=fn)
 ## CEAC #from ceacd
 ## PCEAC #from pceacd
 ## BCEAC #from bceacd
-## TODO country names not iso3
 
 ttls <- c('Intensified case-finding intervention',
           'Household contact management intervention',

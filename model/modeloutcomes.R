@@ -33,7 +33,7 @@ library(scales)
 library(glue)
 
 ## for CEAC plotting
-source(here('../dataprep/tippifunctions.R')) #CEAC & plotting utils
+source(here('dataprep/tippifunctions.R')) #CEAC & plotting utils
 modpath <- here('model')
 gh <- function(x) glue(here(modpath,x))
 
@@ -71,7 +71,7 @@ ceactop <- 3e3 #top to plot in CEAC curves
 ## country key
 CK <- data.table(iso3=unique(LYK$iso3)) #NOTE this is where the countries involved are coded
 CK[iso3=='CMR',country:='Cameroon']
-CK[iso3=='CIV',country:="Côte d'Ivoire"]
+CK[iso3=='CIV',country:="Cote d'Ivoire"]
 CK[iso3=='COD',country:='DRC']
 CK[iso3=='KEN',country:='Kenya']
 CK[iso3=='LSO',country:='Lesotho']
@@ -107,6 +107,9 @@ CFRdatam[,age:='5-14']; CFRdatam[grepl('Y',variable),age:='0-4']
 CFRdatam[,variable:=gsub("Y$|O$","",variable)]
 CFRdatam <- dcast(CFRdatam,id+age~variable,value.var = 'value')
 CFRdatam[,c('dN','dA'):=.(notx-ontx,notxHA-ontxHA)] #delta-CFR
+mean(CFRdatam$dA<0) #about 1% of the time random draw means -ve effect
+CFRdatam[dA<0,notxHA:=ontxHA * notx/ontx] #remove by adhoc assumption
+CFRdatam[,dA:=notxHA-ontxHA] #delta-CFR
 
 ## changes in ATT or PT success
 nmz <- names(INT)[-1]
@@ -326,6 +329,8 @@ T2 <- merge(T2,CK,by='country') #country iso3 merged on
 ## inspect
 summary(T1)
 
+T1$country <- gsub("ote","ôte",T1$country)
+
 ## --- CEA and CEAC plots ---
 
 ## CEA plot
@@ -350,10 +355,10 @@ ggsave(GP,file=fn1,w=10,h=10); ## ggsave(GP,file=fn2,w=10,h=10)
 ## make CEAC data
 lz <- seq(from = 0,to=ceactop,length.out = 1000)
 ceacd <- list()
-for(iso in unique(T1$iso3)){
-    tmp <- T1[iso3==iso,.(Q=dDALY,P=Dcost)]
-    ceacd[[iso]] <- data.table(
-        iso3=iso,x=lz,
+for(cn in unique(T1$country)){
+    tmp <- T1[country==cn,.(Q=dDALY,P=Dcost)]
+    ceacd[[cn]] <- data.table(
+        country=cn,x=lz,
         y=make.ceac(tmp,lz))
 }
 ceacd <- rbindlist(ceacd)
@@ -372,9 +377,9 @@ ggsave(CEAC,file=fn1,w=7,h=7); ## ggsave(CEAC,file=fn2,w=7,h=7)
 ## output where things X 50%
 tmp <- ceacd[y>0.5 & abs(y-0.5)<5e-2]
 tmp[,err:=abs(y-0.5)]
-tmp[,ermin:=min(err),by=iso3]
+tmp[,ermin:=min(err),by=country]
 tmp <- tmp[err==ermin]
-tmp <- tmp[,.(iso3,ceac50=round(x))]
+tmp <- tmp[,.(country,ceac50=round(x))]
 tmp
 
 fn1 <- gh('outdata/CEAC50') + SA + '.csv'
@@ -451,6 +456,10 @@ Table2ATT <- icer[,.(country,treated.soc,cost.soc,treated.int,cost.int,
 
 fn1 <- gh('outdata/Table2ATT') + SAT + '.Rdata'
 save(Table2ATT,file=fn1)
+
+
+
+T2$country <- gsub("ote","ôte",T2$country)
 
 ## --- ICER tables  by age (as above)
 ## ICERs by country & age
@@ -537,6 +546,7 @@ X <- merge(X,tmp,by='iso3')          #cascade data
 Y <- ice[,.(country,ICER,Dcost,dDALY)]
 XM <- melt(X,id=c('iso3','country'))
 XYc <- merge(XM,Y,by='country',all.x=TRUE) #merge together
+XYc$country <- gsub("ote","ôte",XYc$country)
 
 ## make and save plots
 
@@ -558,6 +568,8 @@ if(!shell) GP
 ggsave(GP,file=gh('graphs/drivers_att_DALY.png'),h=10,w=10)
 ## ggsave(GP,file=gh('graphs/drivers_att_DALY.pdf'),h=10,w=10)
 
+## check
+T1[,1e2*table(LS>0,tx>1)/nrow(T1)]
 
 
 ## part2
@@ -976,6 +988,9 @@ PT2 <- PT[,.(cost.soc=(cost.soc),
           by=.(country,age,id)]
 PT2 <- merge(PT2,CK,by='country') #country iso3 merged on
 
+## country name fix
+PT1$country <- gsub("ote","ôte",PT1$country)
+PT2$country <- gsub("ote","ôte",PT2$country)
 
 ## --- CEA and CEAC plots ---
 
@@ -1002,10 +1017,10 @@ ggsave(GP,file=fn1,w=10,h=10); ## ggsave(GP,file=fn2,w=10,h=10)
 ## make CEAC data
 lz <- seq(from = 0,to=ceactop,length.out = 1000)
 pceacd <- list()
-for(iso in unique(PT1$iso3)){
-    tmp <- PT1[iso3==iso,.(Q=dDALY,P=Dcost)]
-    pceacd[[iso]] <- data.table(
-        iso3=iso,x=lz,
+for(cn in unique(PT1$country)){
+    tmp <- PT1[country==cn,.(Q=dDALY,P=Dcost)]
+    pceacd[[cn]] <- data.table(
+        country=cn,x=lz,
         y=make.ceac(tmp,lz))
 }
 pceacd <- rbindlist(pceacd)
@@ -1023,9 +1038,9 @@ ggsave(PCEAC,file=fn1,w=10,h=10); ## ggsave(PCEAC,file=fn2,w=10,h=10)
 ## output where things X 50%
 tmp <- pceacd[y>0.5 & abs(y-0.5)<5e-2] #NOTE may need tuning if sample changes
 tmp[,err:=abs(y-0.5)]
-tmp[,ermin:=min(err),by=iso3]
+tmp[,ermin:=min(err),by=country]
 tmp <- tmp[err==ermin]
-tmp <- tmp[,.(iso3,ceac50=round(x))]
+tmp <- tmp[,.(country,ceac50=round(x))]
 tmp
 fn <- gh('outdata/CEAC50pt') + SA + '.' + ACF + '.csv'
 fwrite(tmp,file=fn)
@@ -1227,10 +1242,10 @@ ggsave(GP,file=fn1,w=10,h=10); ## ggsave(GP,file=fn2,w=10,h=10)
 ## make CEAC data
 lz <- seq(from = 0,to=ceactop,length.out = 1000)
 bceacd <- list()
-for(iso in unique(PT1$iso3)){
-    tmp <- PTT[iso3==iso,.(Q=dDALY,P=Dcost)]
-    bceacd[[iso]] <- data.table(
-        iso3=iso,x=lz,
+for(cn in unique(PT1$country)){
+    tmp <- PTT[country==cn,.(Q=dDALY,P=Dcost)]
+    bceacd[[cn]] <- data.table(
+        country=cn,x=lz,
         y=make.ceac(tmp,lz))
 }
 bceacd <- rbindlist(bceacd)
@@ -1282,6 +1297,10 @@ B <- PT1[,.(country,iso3,id,
             Dcost.TPT=Dcost,
             dDALY.TPT=dDALY)]
 
+## fix country name
+BC$Country <- gsub("ote","ôte",BC$Country)
+
+## merge in
 PTA <- merge(A,B,by=c('country','iso3','id'))
 PTA <- merge(PTA,BC[,.(country=Country,BR)],by='country') #weight
 

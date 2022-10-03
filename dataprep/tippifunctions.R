@@ -23,7 +23,7 @@ ssum <- function(x) sqrt(sum(x^2))
 bracket <- function(x,y,z,ns=0,dp=0) paste0(format(round(x,dp),big.mark = ',',nsmall=ns),
                                             ' (',
                                             format(round(y,dp),big.mark = ',',nsmall=ns),
-                                            ' - ',
+                                            ' to ',
                                             format(round(z,dp),big.mark = ',',nsmall=ns),
                                             ')')
 
@@ -162,7 +162,7 @@ make.ceac.plot <- function(D,thresholds=NULL,xpad=0){
                    "#F0E442", "#0072B2","#D55E00", "#CC79A7",
                    "darkorchid1")
     ## plot
-    GP <- ggplot(D,aes(x,y,col=iso3)) +
+    GP <- ggplot(D,aes(x,y,col=country)) +
         geom_line() +
         theme_classic() +
         theme(legend.position = 'top')+

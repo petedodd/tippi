@@ -907,6 +907,7 @@ PT[,LSACF:=-(deathsACF.int-deathsACF.soc)]
 PT[,c('dDALYacf','dDALY0acf'):=.(LYS*LSACF,LYS0*LSACF)]
 
 
+
 ## NOTE assumption of same age split under SOC - tot pop RR
 ## outcomes:
 ## cost
@@ -926,6 +927,45 @@ PT[,deaths.int:=RR*deathsPT.int + 0*deathsnoPT]
 PT[,LS:=-(deaths.int-deaths.soc)]
 ## add in DALYs etc
 PT[,c('dDALY','dDALY0'):=.(LYS*LS,LYS0*LS)]
+
+## looking at HEP separately
+PT[,cost.soc.hep:=(`socu_Screening in HIV clinic`+  #HEP
+                   `socu_TPT treatment`)+
+      (1*attPT.soc.hep+(RR-1)*attnoPT.hep*`socu_TB treatment`)
+   ]
+PT[,cost.int.hep:= RR*(
+  `intu_Screening in HIV clinic`+  #HEP
+  `intu_TPT treatment`                                #TPT
+) + #PT cost, includes hhc or tbe
+  (RR*attPT.int.hep+0*attnoPT.hep*`intu_TB treatment`) #ATT cost
+]
+PT[,deaths.soc.hep:=1*deathsPT.soc.hep + (RR-1)*deathsnoPT.hep]
+PT[,deaths.int.hep:=RR*deathsPT.int.hep + 0*deathsnoPT.hep]
+PT[,LS.hep:=-(deaths.int.hep-deaths.soc.hep)]
+## add in DALYs etc
+PT[,c('dDALY.hep','dDALY0.hep'):=.(LYS*LS.hep,LYS0*LS.hep)]
+
+HEP <- PT[,.(iso3,id,country,age,
+             cost.soc.hep,cost.int.hep,
+             deaths.soc.hep,deaths.int.hep,
+             ## deathsPT.soc.hep,deathsnoPT.hep,
+             dDALY.hep,dDALY0.hep)]
+HEP <- HEP[iso3!='CIV'] #did not happen in CIV
+HEP <- HEP[,.(dCost=sum(cost.int.hep-cost.soc.hep),
+              dDeath=sum(deaths.soc.hep-deaths.int.hep),
+              dDALY.hep=sum(dDALY.hep)),
+           by=.(id,country)]
+
+## TODO check IRR
+HEP <- HEP[,.(dCost.mid=mean(dCost),dCost.lo=lof(dCost),dCost.hi=hif(dCost),
+              dDeath.mid=mean(dDeath),dDeath.lo=lof(dDeath),dDeath.hi=hif(dDeath),
+              dDALY.mid=mean(dDALY.hep),dDALY.lo=lof(dDALY.hep),dDALY.hi=hif(dDALY.hep)
+              ), by= country]
+
+HEP[,.(country,
+       dCost=bracket(dCost.mid,dCost.lo,dCost.hi),
+       dDALY=bracket(dDALY.mid,dDALY.lo,dDALY.hi),
+       ICER=dCost.mid/dDALY.mid)]
 
 ## ACF cascade
 ## denominators haven't been summed over PT-age, hhc correct split

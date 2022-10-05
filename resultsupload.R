@@ -60,6 +60,11 @@ load(here('model/data/Table1ATT.Rdata'))
 load(here('model/data/Table1PT.Rdata'))
 load(here('model/data/Table1PTcost.Rdata'))
 
+## ensure correct naming
+names(Table1ATT) <- gsub("ote","ôte",names(Table1ATT))
+names(Table1PT) <- gsub("ote","ôte",names(Table1PT))
+names(Table1PTcost) <- gsub("ote","ôte",names(Table1PTcost))
+
 setcolorder(Table1PTcost,names(Table1PT))
 
 Table1 <- rbindlist(list(Table1ATT,Table1PT,Table1PTcost))
@@ -79,7 +84,6 @@ write_sheet(Table2PT,shidneat,sheet="Tab2PT")
 ## combined intervention
 load(here('model/outdata/Table2both.1.Rdata'))
 write_sheet(Table2both,shidneat,sheet="Tab2combined")
-
 
 ## backgrounds stats for results
 upload.to.sheets(here('dataprep/outdata/'),"Pstats.csv",shidneat)

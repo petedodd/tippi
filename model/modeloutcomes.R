@@ -7,7 +7,7 @@ if(shell){
   SA <- args[1]                  #none,base/lo/hi,cdr,txd
   if(SA == 'none'){
     SA <- ''
-  } 
+  }
 } else { #set by hand
   rm(list=ls()) #clear all
   shell <- FALSE #whether running from shell script or not
@@ -33,8 +33,9 @@ library(scales)
 library(glue)
 
 ## for CEAC plotting
-source(here('dataprep/tippifunctions.R')) #CEAC & plotting utils
-modpath <- here('model')
+source(here('../dataprep/tippifunctions.R')) #CEAC & plotting utils
+## modpath <- here('model')
+modpath <- '' #seem to get slightly different behaviour wrt sub .here's mac vs linux
 gh <- function(x) glue(here(modpath,x))
 
 ## ===== INPUT DATA
@@ -945,27 +946,6 @@ PT[,LS.hep:=-(deaths.int.hep-deaths.soc.hep)]
 ## add in DALYs etc
 PT[,c('dDALY.hep','dDALY0.hep'):=.(LYS*LS.hep,LYS0*LS.hep)]
 
-HEP <- PT[,.(iso3,id,country,age,
-             cost.soc.hep,cost.int.hep,
-             deaths.soc.hep,deaths.int.hep,
-             ## deathsPT.soc.hep,deathsnoPT.hep,
-             dDALY.hep,dDALY0.hep)]
-HEP <- HEP[iso3!='CIV'] #did not happen in CIV
-HEP <- HEP[,.(dCost=sum(cost.int.hep-cost.soc.hep),
-              dDeath=sum(deaths.soc.hep-deaths.int.hep),
-              dDALY.hep=sum(dDALY.hep)),
-           by=.(id,country)]
-
-## TODO check IRR
-HEP <- HEP[,.(dCost.mid=mean(dCost),dCost.lo=lof(dCost),dCost.hi=hif(dCost),
-              dDeath.mid=mean(dDeath),dDeath.lo=lof(dDeath),dDeath.hi=hif(dDeath),
-              dDALY.mid=mean(dDALY.hep),dDALY.lo=lof(dDALY.hep),dDALY.hi=hif(dDALY.hep)
-              ), by= country]
-
-HEP[,.(country,
-       dCost=bracket(dCost.mid,dCost.lo,dCost.hi),
-       dDALY=bracket(dDALY.mid,dDALY.lo,dDALY.hi),
-       ICER=dCost.mid/dDALY.mid)]
 
 ## ACF cascade
 ## denominators haven't been summed over PT-age, hhc correct split
@@ -1427,7 +1407,7 @@ save(Table2both,file=fn)
 ## BCEAC #from bceacd
 
 ttls <- c('Intensified case-finding intervention',
-          'Household contact management intervention',
+          'Household contact management & HIV clinic preventive therapy intervention',
           'Combined CaP TB intervention package')
 CAP <- list(CEAC,PCEAC,BCEAC)
 for(i in 1:3) CAP[[i]] <- CAP[[i]] + ggtitle(ttls[i])
@@ -1437,9 +1417,9 @@ CAPP <- ggarrange(plotlist = CAP,
           common.legend = TRUE,legend="bottom",ncol=1)
 
 fn1 <- gh('graphs/allCEACs') + SA + '.' + ACF + '.png'
-## fn2 <- gh('graphs/allCEACs') + SA + '.' + ACF + '.pdf'
+fn2 <- gh('graphs/allCEACs') + SA + '.' + ACF + '.eps'
 ggsave(CAPP,file=fn1,w=8,h=15); #ggsave(CAPP,file=fn2,w=8,h=15);
-
+if(SA=='') ggsave(CAPP,file=fn2,w=8,h=15)
 
 ## =============================================
 

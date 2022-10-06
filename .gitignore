@@ -5,7 +5,7 @@ inference/stan/*.rds
 dataprep/graphs/*.png
 inference/graphs/*.pdf
 inference/graphs/*.png
-model/graphs/*.pdf
-model/graphs/*.png
+#model/graphs/*.pdf
+#model/graphs/*.png
 Rplots.pdf
 dataprep/graphs/*.txt               #path only relevant to Pete's machine

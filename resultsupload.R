@@ -92,19 +92,17 @@ upload.to.sheets(here('dataprep/outdata/'),"Tstats.csv",shidneat)
 
 ## --- SA table ---
 sa.base <- fread(here('model/outdata/ICERall.1.csv'))
-sa.cdr <- fread(here('model/outdata/ICERallcdr.1.csv'))
 sa.hi <- fread(here('model/outdata/ICERallhi.1.csv'))
 sa.lo <- fread(here('model/outdata/ICERalllo.1.csv'))
 sa.succ <- fread(here('model/outdata/ICERalltxd.1.csv'))
 
 
 names(sa.base)[3] <- 'Base case'
-names(sa.cdr)[3] <- 'Higher incident HH contact CDR'
 names(sa.hi)[3] <- '5% discount rate'
 names(sa.lo)[3] <- '0% discount rate'
 names(sa.succ)[3] <- 'ATT/TPT completion improvement included'
 
-SAll <- Reduce(merge,list(sa.base,sa.cdr,sa.hi,sa.lo,sa.succ))
+SAll <- Reduce(merge,list(sa.base,sa.hi,sa.lo,sa.succ))
 
 write_sheet(SAll,shidneat,sheet="SAll")
 

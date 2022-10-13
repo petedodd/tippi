@@ -47,6 +47,7 @@ Analyses should be run in this order:
 
 The following R packages are required:
 
+- inference: rstanarm
 - plotting: ggplot2, scales, ggpubr, ggthemes
 - modelling: HEdtree, discly (install using `devtools::install_github('petedodd/packagename')` )
 - data manipulation: data.table

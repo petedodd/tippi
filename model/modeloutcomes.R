@@ -336,7 +336,7 @@ CETM$country <- gsub("ote","ôte",CETM$country)
 ## --- CEA and CEAC plots ---
 
 ## CEA plot
-GP <- ggplot(T1[country=="Côte d'Ivoire"],aes(dDALY,Dcost)) +
+GP <- ggplot(T1,aes(dDALY,Dcost)) +
     geom_vline(xintercept = 0)+
     geom_hline(yintercept = 0)+
     geom_point(alpha=0.1,shape=1) +
@@ -1242,6 +1242,7 @@ picers[age=='0-4',.(country,numPT.int,ICER)]
 fn <- gh('outdata/ICERagept') + SA + '.' + ACF + '.csv'
 fwrite(picers,file=fn)
 
+BC$Country <- gsub("ote","ôte",BC$Country)
 
 ## ================= BOTH components ============================
 ## want weighting during baseline
@@ -1251,6 +1252,7 @@ PTT <- merge(T1[,.(country,iso3,id,Dcost.att=Dcost,dDALY.att=dDALY)],
 PTT <- merge(PTT,BC[,.(country=Country,BR)],by='country') #weight
 PTT[,Dcost:=Dcost.att*BR/(1+BR) + Dcost.pt*1/(1+BR)] #weighted costs
 PTT[,dDALY:=dDALY.att*BR/(1+BR) + dDALY.pt*1/(1+BR)] #weighted DALYs
+
 
 ## CEA plot
 GP <- ggplot(PTT,aes(dDALY,Dcost)) +

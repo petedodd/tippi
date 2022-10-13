@@ -331,11 +331,12 @@ T2 <- merge(T2,CK,by='country') #country iso3 merged on
 summary(T1)
 
 T1$country <- gsub("ote","ôte",T1$country)
+CETM$country <- gsub("ote","ôte",CETM$country)
 
 ## --- CEA and CEAC plots ---
 
 ## CEA plot
-GP <- ggplot(T1,aes(dDALY,Dcost)) +
+GP <- ggplot(T1[country=="Côte d'Ivoire"],aes(dDALY,Dcost)) +
     geom_vline(xintercept = 0)+
     geom_hline(yintercept = 0)+
     geom_point(alpha=0.1,shape=1) +

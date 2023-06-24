@@ -102,7 +102,7 @@ SBEP[,iso3:=c("CMR","CIV","COD","KEN","LSO","MWI","UGA","TZA","ZWE")] #NOTE diff
 SBEP <- SBEP[order(iso3)]
 save(SBEP,file=here('data/SBEP.Rdata'))
 
-## blextract1.csv  blextract2.csv  resoure.int.csv
+## blextract1.csv  blextract2.csv  resource.int.csv
 ## baseline cascade data from report
 ## bl extract 1:
 ## pt, pthiv from table O3.3 pg 15
@@ -113,6 +113,7 @@ B1 <- fread(fn)
 ## see figure 10 pg 18 of report for ATT
 fn <- here('indata/blextract2.csv')
 B2 <- fread(fn)
+B2[metric=='Treated for DS-TB', total:=1162]  # correcting figure
 ## cascades & resources during intervention
 ## - from 'cascade data for Nyasha' spreadsheet
 fn <- here('indata/resource.int.csv')
@@ -860,11 +861,11 @@ tmp7[,c('condition','variable'):=.('PT','Child HH contacts diagnosed with TB')]
 setcolorder(tmp7,names(Table1PT))
 
 Table1PTxtraA <- rbindlist(list(tmp1,tmp2))
-Table1PTxtraB <- rbindlist(list(tmp3,tmp4,tmp5,tmp6,tmp7))
+Table1PTxtraB <- rbindlist(list(tmp4,tmp5,tmp6,tmp7,tmp3))
 
 ## make B table relative to top row
 Table1PTxtraB <- cbind(Table1PTxtraB[,.(condition,variable)],
-                       Table1PTxtraB[,lapply(.SD,function(x) x/x[1]),
+                       Table1PTxtraB[,lapply(.SD,function(x) x/x[5]),
                                      .SDcols=names(Table1PTxtraB)[-c(1:2)]])
 
 

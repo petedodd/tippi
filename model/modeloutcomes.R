@@ -1,5 +1,5 @@
 ## flags for sensitivity analyses
-shell <- TRUE #whether running from shell script or not
+shell <- FALSE #whether running from shell script or not
 if(shell){
   ## running from shell
   args <- commandArgs(trailingOnly=TRUE)
@@ -16,7 +16,7 @@ if(shell){
   ## 'discr'='base'/'lo'/'hi'
   ## 'cdr' = making cdr higher for incidence
   ## 'txd' = making the completion influence tx/pt outcome
-  sacases <- c('','base','cdr','txd')
+  sacases <- c('','base','cdr','txd', 'dalys')
   SA <- sacases[1]
 }
 SAT <- ifelse(SA=='txd','txd','') #SA relevant to Tx
@@ -188,7 +188,7 @@ if(!shell) GP
 
 ggsave(GP,file=gh('graphs/cost_cascade.png'),h=6,w=10)
 ## ggsave(GP,file=gh('graphs/cost_cascade.pdf'),h=6,w=10)
-
+KA[iso3=='LSO']                     #inspect
 
 GP <- ggplot(KAM[variable=='Intervention'],
        aes(country,value,fill=metric)) +
@@ -268,12 +268,17 @@ if(SA=='txd'){                        #sensitivity analysis
 ## after - RR ontx: 0     notx
 T[,deaths.int:=CFRtx*RR]         #deaths in intervention
 T[,deaths.soc:=CFRtx.soc + (RR-1)*CFRnotx]         #deaths in soc
+T[,LYD.int:=0.25*0.331*RR]         # life years lived with disease in intervention
+T[,LYD.soc:=1*0.25*0.331 + (RR-1)*0.5*0.331]         # life years lived with disease in soc
 T[,LS:=deaths.soc-deaths.int]
+T[,dYLD:=LYD.soc-LYD.int]
 if(SA=='txd'){                        #sensitivity analysis
     T[,LS.hiv0:=(ontx*(1-BL)/(1-INT) + (RR-1)*notx)-ontx*RR]
 } else {
     T[,LS.hiv0:=(ontx + (RR-1)*notx)-ontx*RR]
 }
+
+
 
 ## u5/o5 split 
 ## S <- data.table(age=c('0-4','5-14'),frac=c(0.6,0.4))
@@ -293,7 +298,15 @@ names(T)[names(T)=='Intervention'] <- 'fracI'
 
 ## merge in life-expectancy & calculate DALY changes
 T <- merge(T,LYK[,.(iso3,age,LYS,LYS0)],by=c('iso3','age'),all.x=TRUE)
-T[,c('dDALY','dDALY0','dDALY.nohiv'):=.(LYS*LS,LYS0*LS,LYS*LS.hiv0)]
+T[,c('dLYS','dLYS0','dLYS.nohiv'):=.(LYS*LS,LYS0*LS,LYS*LS.hiv0)]
+
+if(SA=='dalys') {
+  # T[,dYLD:=0.25*0.331]         # saved years lived with disease in intervention
+  T[,c('dDALY','dDALY0','dDALY.nohiv'):=.(dLYS+dYLD,dLYS0+dYLD,dLYS.nohiv+dYLD)]
+} else 
+{
+  T[,c('dDALY','dDALY0','dDALY.nohiv'):=.(dLYS,dLYS0,dLYS.nohiv)]
+}
 
 ## calculate differential costs & DALYs over ages
 ## NOTE frac here is age split
@@ -305,6 +318,7 @@ T1 <- T[,.(cost.soc=sum(costt.soc*frac),
            tx=sum(RR*frac),
            deaths.soc=sum(deaths.soc*frac),
            deaths.int=sum(deaths.int*frac),
+           # dYLD=sum(dYLD*frac),
            dDALY0=sum(dDALY0*frac),
            dDALY=sum(dDALY*frac),
            dDALY.nohiv=sum(dDALY.nohiv*frac)),
@@ -321,6 +335,7 @@ T2 <- T[,.(cost.soc=(costt.soc),
            ## deaths.soc=((deaths.int+LS)),
            deaths.soc=(deaths.soc),
            deaths.int=(deaths.int),
+           # dYLD=(dYLD),
            dDALY0=(dDALY0),
            dDALY=(dDALY),
            dDALY.nohiv=(dDALY.nohiv)),
@@ -366,15 +381,38 @@ for(cn in unique(T1$country)){
 ceacd <- rbindlist(ceacd)
 
 ## make CEAC plot
-CEAC <- make.ceac.plot(ceacd,xpad=50)
+CEAC <- make.ceac.plot(ceacd,xpad=50) +
+  xlab('Cost-effectiveness threshold (USD per DALY averted)')
 if(!shell) CEAC
-
 
 fn1 <- gh('graphs/CEAC') + SAT + '.png'
 ## fn2 <- gh('graphs/CEAC') + SAT + '.pdf'
 ggsave(CEAC,file=fn1,w=7,h=7); ## ggsave(CEAC,file=fn2,w=7,h=7)
 
+# labelled CEAC
+CEACL <- ceacd %>%
+  mutate(label_hjust = rep(c(0.85, 0.85, 0.25, 0.4, 0.95,0.25, 0.25, 0.25, 0.85), each=nrow(ceacd)/length(unique(country)))) %>%
+  ggplot() +
+  geomtextpath::geom_textline(aes(x,y,
+                                  col=country,
+                                  label=country,
+                                  hjust = label_hjust),
+                              size=4, vjust = 0.3, show.legend = FALSE, text_only = TRUE, text_smoothing = 40) + 
+  theme_classic() +
+  guides(col = guide_legend(order = 1, nrow = 2, title = 'Country')) +
+  theme(legend.position = 'top',legend.title = element_blank())+
+  # theme(legend.text=element_text(size=rel(0.8)))+
+  ggpubr::grids()+
+  scale_x_continuous(label=comma,
+                     breaks = seq(0,ceactop,250)) +
+  scale_colour_manual(values=c("#999999", "#E69F00", "#56B4E9","#009E73",
+                               "#F0E442", "#0072B2","#D55E00", "#CC79A7",
+                               "darkorchid1"))+
+  ylab('Probability cost-effective')+
+  xlab('Cost-effectiveness threshold (USD per DALY averted)')
 
+CEACL
+ggsave(CEACL,file=gh('graphs/CEACL') + SA + '.png',w=7,h=7)
 
 ## output where things X 50%
 tmp <- ceacd[y>0.5 & abs(y-0.5)<5e-2]
@@ -447,7 +485,6 @@ icer
 fn1 <- gh('outdata/ICERatt') + SA + '.csv'
 fwrite(icer,file=fn1)
 
-
 ## --table 2 format
 Table2ATT <- icer[,.(country,treated.soc,cost.soc,treated.int,cost.int,
                      diff.PT=0,diff.incTB=0,
@@ -458,8 +495,6 @@ Table2ATT <- icer[,.(country,treated.soc,cost.soc,treated.int,cost.int,
 
 fn1 <- gh('outdata/Table2ATT') + SAT + '.Rdata'
 save(Table2ATT,file=fn1)
-
-
 
 T2$country <- gsub("ote","ôte",T2$country)
 
@@ -569,6 +604,101 @@ if(!shell) GP
 
 ggsave(GP,file=gh('graphs/drivers_att_DALY.png'),h=10,w=10)
 ## ggsave(GP,file=gh('graphs/drivers_att_DALY.pdf'),h=10,w=10)
+
+
+## make CEACY (0-4 years) data
+lz <- seq(from = 0,to=ceactop,length.out = 1000)
+ceacdy <- list()
+for(cn in unique(T2$country)){
+  tmp <- T2[age=='0-4',]
+  tmp <- tmp[country==cn,.(Q=dDALY,P=Dcost)]
+  ceacdy[[cn]] <- data.table(
+    country=cn,x=lz,
+    y=make.ceac(tmp,lz))
+}
+ceacdy <- rbindlist(ceacdy)
+
+## make CEACO plot
+CEACY <- make.ceac.plot(ceacdy,xpad=50)  +
+  xlab('Cost-effectiveness threshold (USD per DALY averted)') +
+  theme(legend.position="top", legend.title = element_blank())
+if(!shell) CEACY
+
+fn1 <- glue(here('graphs/CEACY')) + SAT + '.png'
+## fn2 <- glue(here('graphs/CEACY')) + SAT + '.pdf'
+ggsave(CEACY,file=fn1,w=7,h=7); ## ggsave(CEAC,file=fn2,w=7,h=7)
+
+# labelled CEAC
+CEACYL <- ceacdy %>%
+  mutate(label_hjust = rep(c(0.85, 0.85, 0.25, 0.4, 0.6,0.4, 0.25, 0.4, 0.85), each=nrow(ceacd)/length(unique(country)))) %>%
+  ggplot() +
+  geomtextpath::geom_textline(aes(x,y,
+                                  col=country,
+                                  label=country,
+                                  hjust = label_hjust),
+                              size=4, vjust = 0.3, show.legend = FALSE, text_only = TRUE, text_smoothing = 40) + 
+  theme_classic() +
+  guides(col = guide_legend(order = 1, nrow = 2, title = 'Country')) +
+  theme(legend.position = 'top',legend.title = element_blank())+
+  # theme(legend.text=element_text(size=rel(0.8)))+
+  ggpubr::grids()+
+  scale_x_continuous(label=comma,
+                     breaks = seq(0,ceactop,250)) +
+  scale_colour_manual(values=c("#999999", "#E69F00", "#56B4E9","#009E73",
+                               "#F0E442", "#0072B2","#D55E00", "#CC79A7",
+                               "darkorchid1"))+
+  ylab('Probability cost-effective')+
+  xlab('Cost-effectiveness threshold (USD per DALY averted)')
+
+CEACYL
+ggsave(CEACYL,file=gh('graphs/CEACYL') + SA + '.png',w=7,h=7)
+
+## make CEACO (5-14 years) data
+lz <- seq(from = 0,to=ceactop,length.out = 1000)
+ceacdo <- list()
+for(cn in unique(T2$country)){
+  tmp <- T2[age=='5-14',]
+  tmp <- tmp[country==cn,.(Q=dDALY,P=Dcost)]
+  ceacdo[[cn]] <- data.table(
+    country=cn,x=lz,
+    y=make.ceac(tmp,lz))
+}
+ceacdo <- rbindlist(ceacdo)
+
+## make CEACO plot
+CEACO <- make.ceac.plot(ceacdo,xpad=50)  +
+  xlab('Cost-effectiveness threshold (USD per DALY averted)') +
+  theme(legend.position="top", legend.title = element_blank())
+if(!shell) CEACO
+
+fn1 <- glue(here('graphs/CEACO')) + SAT + '.png'
+## fn2 <- glue(here('graphs/CEACO')) + SAT + '.pdf'
+ggsave(CEACO,file=fn1,w=7,h=7); ## ggsave(CEACO,file=fn2,w=7,h=7)
+
+# labelled CEAC
+CEACOL <- ceacdo %>%
+  mutate(label_hjust = rep(c(0.85, 0.98, 0.25, 0.4, 0.95,0.25, 0.25, 0.25, 0.95), each=nrow(ceacd)/length(unique(country)))) %>%
+  ggplot() +
+  geomtextpath::geom_textline(aes(x,y,
+                                  col=country,
+                                  label=country,
+                                  hjust = label_hjust),
+                              size=4, vjust = 0.3, show.legend = FALSE, text_only = TRUE, text_smoothing = 40) + 
+  theme_classic() +
+  guides(col = guide_legend(order = 1, nrow = 2, title = 'Country')) +
+  theme(legend.position = 'top',legend.title = element_blank())+
+  # theme(legend.text=element_text(size=rel(0.8)))+
+  ggpubr::grids()+
+  scale_x_continuous(label=comma,
+                     breaks = seq(0,ceactop,250)) +
+  scale_colour_manual(values=c("#999999", "#E69F00", "#56B4E9","#009E73",
+                               "#F0E442", "#0072B2","#D55E00", "#CC79A7",
+                               "darkorchid1"))+
+  ylab('Probability cost-effective')+
+  xlab('Cost-effectiveness threshold (USD per DALY averted)')
+
+CEACOL
+ggsave(CEACOL,file=gh('graphs/CEACOL') + SA + '.png',w=7,h=7)
 
 ## part2
 ## ================= PT component ============================
@@ -819,7 +949,7 @@ PT[,costPT.int:=
 
 ## --- ACF here
 ## should be getting ~6 per 100 index cases across ages
-## NOTE be careful to get right numbers actoss ages:
+## NOTE be careful to get right numbers across ages:
 ## for a u5 PT -> traceperhhcpt -> u5 & o5 screens etc
 ## for a o5 PT -> traceperhhcpt -> u5 & o5 screens etc
 ## => NOTE need to sum & attach to both u5 & o5 before aggregating
@@ -905,10 +1035,19 @@ PT[,ATTACF.int:= RR*ATTACF.hh + 0*ATTACF.nhh]
 PT[,deathsACF.soc:=1*deathsPrev.int + (RR-1)*deathsPrev.soc]
 PT[,deathsACF.int:=RR*deathsPrev.int + 0*deathsPrev.soc]
 PT[,LSACF:=-(deathsACF.int-deathsACF.soc)]
+PT[,LYDACF.int:=0.25*0.331*RR*ATTACF.hh]         # life years lived with disease in intervention
+PT[,LYDACF.soc:=1*ATTACF.hh*0.25*0.331 + (RR-1)*ATTACF.nhh*0.5*0.331]         # life years lived with disease in soc
+PT[,dYLDACF:=LYDACF.soc-LYDACF.int]
+
 ## add in DALYs etc
 PT[,c('dDALYacf','dDALY0acf'):=.(LYS*LSACF,LYS0*LSACF)]
 
-
+if(SA=='dalys') {
+  PT[,c('dDALYacf','dDALY0acf'):=.(dDALYacf+dYLDACF,dDALY0acf+dYLDACF)]
+} else 
+{
+  PT[,c('dDALYacf','dDALY0acf'):=.(dDALYacf,dDALY0acf)]
+}
 
 ## NOTE assumption of same age split under SOC - tot pop RR
 ## outcomes:
@@ -920,15 +1059,30 @@ PT[,cost.int:=(RR*costPT.int+0*0) + #PT cost, includes hhc or tbe
 ## cases
 PT[,cases.soc:=1*casesPT.soc + (RR-1)*casesnoPT]
 PT[,cases.int:=RR*casesPT.int + 0*casesnoPT]
+
+
 ## ATT
 PT[,ATT.soc:=cases.soc*cdr]
 PT[,ATT.int:=cases.int*cdr]
+
+## life years lived with disease
+PT[,YLD.soc:=cases.soc*0.25*0.331*cdr  + cases.soc*(1-cdr)*0.5*0.331]
+PT[,YLD.int:=cases.int*0.25*0.331*cdr  + cases.int*(1-cdr)*0.5*0.331]
+PT[,dYLD:=YLD.soc-YLD.int]
+
 ## deaths
 PT[,deaths.soc:=1*deathsPT.soc + (RR-1)*deathsnoPT]
 PT[,deaths.int:=RR*deathsPT.int + 0*deathsnoPT]
 PT[,LS:=-(deaths.int-deaths.soc)]
 ## add in DALYs etc
 PT[,c('dDALY','dDALY0'):=.(LYS*LS,LYS0*LS)]
+
+## 
+if(SA=='dalys') {
+  PT[,c('dDALY','dDALY0'):=.(dDALY+dYLD,dDALY0+dYLD)]
+} else{
+  PT[,c('dDALY','dDALY0'):=.(dDALY,dDALY0)]
+}
 
 ## looking at HEP separately
 PT[,cost.soc.hep:=(`socu_Screening in HIV clinic`+  #HEP
@@ -1059,7 +1213,8 @@ for(cn in unique(PT1$country)){
 pceacd <- rbindlist(pceacd)
 
 ## make CEAC plot
-PCEAC <- make.ceac.plot(pceacd,xpad=50)
+PCEAC <- make.ceac.plot(pceacd,xpad=50) +
+  xlab('Cost-effectiveness threshold (USD per DALY averted)')
 if(!shell) PCEAC
 
 ## save out
@@ -1067,6 +1222,126 @@ fn1 <- gh('graphs/CEACpt') + SA + '.' + ACF + '.png'
 ## fn2 <- gh('graphs/CEACpt') + SA + '.' + ACF + '.pdf'
 ggsave(PCEAC,file=fn1,w=10,h=10); ## ggsave(PCEAC,file=fn2,w=10,h=10)
 
+# labelled CEAC
+PCEACL <- pceacd %>%
+  mutate(label_hjust = rep(c(0.4, 0.15, 0.3, 0.3, 0.2,0.4, 0.3, 0.3, 0.4), each=nrow(ceacd)/length(unique(country)))) %>%
+  ggplot() +
+  geomtextpath::geom_textline(aes(x,y,
+                                  col=country,
+                                  label=country,
+                                  hjust = label_hjust),
+                              size=4, vjust = 0.3, show.legend = FALSE, text_only = TRUE, text_smoothing = 40) + 
+  theme_classic() +
+  guides(col = guide_legend(order = 1, nrow = 2, title = 'Country')) +
+  theme(legend.position = 'top',legend.title = element_blank())+
+  # theme(legend.text=element_text(size=rel(0.8)))+
+  ggpubr::grids()+
+  scale_x_continuous(label=comma,
+                     breaks = seq(0,ceactop,250)) +
+  scale_colour_manual(values=c("#999999", "#E69F00", "#56B4E9","#009E73",
+                               "#F0E442", "#0072B2","#D55E00", "#CC79A7",
+                               "darkorchid1"))+
+  ylab('Probability cost-effective')+
+  xlab('Cost-effectiveness threshold (USD per DALY averted)')
+
+PCEACL
+ggsave(PCEACL,file=gh('graphs/CEACptL') + SA + '.png',w=7,h=7)
+
+## make PCEACY (0-4 years) data
+lz <- seq(from = 0,to=ceactop,length.out = 1000)
+pceacdy <- list()
+for(cn in unique(PT2$country)){
+  tmp <- PT2[age=='0-4',]
+  tmp <- tmp[country==cn,.(Q=dDALY,P=Dcost)]
+  pceacdy[[cn]] <- data.table(
+    country=cn,x=lz,
+    y=make.ceac(tmp,lz))
+}
+pceacdy <- rbindlist(pceacdy)
+
+## make PCEACY plot
+PCEACY <- make.ceac.plot(pceacdy,xpad=50)  +
+  xlab('Cost-effectiveness threshold (USD per DALY averted)') +
+  guides(col = guide_legend(title = 'Country'))
+if(!shell) PCEACY
+
+## save out
+fn1 <- glue(here('graphs/CEACptY')) + SA + '.' + ACF + '.png'
+## fn2 <- glue(here('graphs/CEACpt')) + SA + '.' + ACF + '.pdf'
+ggsave(PCEACY,file=fn1,w=10,h=10); ## ggsave(PCEACY,file=fn2,w=10,h=10)
+
+# labelled CEAC
+PCEACYL <- pceacdy %>%
+  mutate(label_hjust = rep(c(0.35, 0.2, 0.3, 0.3, 0.2,0.2, 0.3, 0.3, 0.25), each=nrow(ceacd)/length(unique(country)))) %>%
+  ggplot() +
+  geomtextpath::geom_textline(aes(x,y,
+                                  col=country,
+                                  label=country,
+                                  hjust = label_hjust),
+                              size=4, vjust = 0.3, show.legend = FALSE, text_only = TRUE, text_smoothing = 40) + 
+  theme_classic() +
+  guides(col = guide_legend(order = 1, nrow = 2, title = 'Country')) +
+  theme(legend.position = 'top',legend.title = element_blank())+
+  # theme(legend.text=element_text(size=rel(0.8)))+
+  ggpubr::grids()+
+  scale_x_continuous(label=comma,
+                     breaks = seq(0,ceactop,250)) +
+  scale_colour_manual(values=c("#999999", "#E69F00", "#56B4E9","#009E73",
+                               "#F0E442", "#0072B2","#D55E00", "#CC79A7",
+                               "darkorchid1"))+
+  ylab('Probability cost-effective')+
+  xlab('Cost-effectiveness threshold (USD per DALY averted)')
+
+PCEACYL
+ggsave(PCEACYL,file=gh('graphs/CEACYptL') + SA + '.png',w=7,h=7)
+
+## make PCEACY (5-14 years) data
+lz <- seq(from = 0,to=ceactop,length.out = 1000)
+pceacdo <- list()
+for(cn in unique(PT2$country)){
+  tmp <- PT2[age=='5-14',]
+  tmp <- tmp[country==cn,.(Q=dDALY,P=Dcost)]
+  pceacdo[[cn]] <- data.table(
+    country=cn,x=lz,
+    y=make.ceac(tmp,lz))
+}
+pceacdo <- rbindlist(pceacdo)
+
+## make PCEACO plot
+PCEACO <- make.ceac.plot(pceacdo,xpad=50)  +
+  xlab('Cost-effectiveness threshold (USD per DALY averted)') +
+  guides(col = guide_legend(title = 'Country'))
+if(!shell) PCEACO
+
+## save out
+fn1 <- glue(here('graphs/CEACptO')) + SA + '.' + ACF + '.png'
+## fn2 <- glue(here('graphs/CEACpt')) + SA + '.' + ACF + '.pdf'
+ggsave(PCEACO,file=fn1,w=10,h=10); ## ggsave(PCEACO,file=fn2,w=10,h=10)
+
+# labelled CEAC
+PCEACOL <- pceacdo %>%
+  mutate(label_hjust = rep(c(0.95, 0.3, 0.95, 0.1, 0.2,0.2, 0.35, 0.3, 0.3), each=nrow(ceacd)/length(unique(country)))) %>%
+  ggplot() +
+  geomtextpath::geom_textline(aes(x,y,
+                                  col=country,
+                                  label=country,
+                                  hjust = label_hjust),
+                              size=4, vjust = 0.3, show.legend = FALSE, text_only = TRUE, text_smoothing = 40) + 
+  theme_classic() +
+  guides(col = guide_legend(order = 1, nrow = 2, title = 'Country')) +
+  theme(legend.position = 'top',legend.title = element_blank())+
+  # theme(legend.text=element_text(size=rel(0.8)))+
+  ggpubr::grids()+
+  scale_x_continuous(label=comma,
+                     breaks = seq(0,ceactop,250)) +
+  scale_colour_manual(values=c("#999999", "#E69F00", "#56B4E9","#009E73",
+                               "#F0E442", "#0072B2","#D55E00", "#CC79A7",
+                               "darkorchid1"))+
+  ylab('Probability cost-effective')+
+  xlab('Cost-effectiveness threshold (USD per DALY averted)')
+
+PCEACOL
+ggsave(PCEACOL,file=gh('graphs/CEACOptL') + SA + '.png',w=7,h=7)
 
 ## output where things X 50%
 tmp <- pceacd[y>0.5 & abs(y-0.5)<5e-2] #NOTE may need tuning if sample changes
@@ -1127,7 +1402,7 @@ Table1PTcost <- transpose(Table1PTcost[,.(country,txt)],
                           make.names = TRUE)
 Table1PTcost[,c('condition',
               'variable'):=.('PT',
-                             'Cost per PT initiation, $ (SD)')]
+                             'Cost per PT initiation, US$ (SD)')]
 
 save(Table1PTcost,file=gh('data/Table1PTcost.Rdata'))
 
@@ -1253,6 +1528,13 @@ PTT <- merge(PTT,BC[,.(country=Country,BR)],by='country') #weight
 PTT[,Dcost:=Dcost.att*BR/(1+BR) + Dcost.pt*1/(1+BR)] #weighted costs
 PTT[,dDALY:=dDALY.att*BR/(1+BR) + dDALY.pt*1/(1+BR)] #weighted DALYs
 
+# age splits 
+PTT2 <- merge(T2[,.(country,iso3,age,id,Dcost.att=Dcost,dDALY.att=dDALY)],
+              PT2[,.(country,iso3,age,id,Dcost.pt=Dcost,dDALY.pt=dDALY)],
+              by=c('country','iso3','age','id'))
+PTT2 <- merge(PTT2,BC[,.(country=Country,BR)],by='country') #weight
+PTT2[,Dcost:=Dcost.att*BR/(1+BR) + Dcost.pt*1/(1+BR)] #weighted costs
+PTT2[,dDALY:=dDALY.att*BR/(1+BR) + dDALY.pt*1/(1+BR)] #weighted DALYs
 
 ## CEA plot
 GP <- ggplot(PTT,aes(dDALY,Dcost)) +
@@ -1263,7 +1545,7 @@ GP <- ggplot(PTT,aes(dDALY,Dcost)) +
                 aes(intercept=0,slope=value,col=threshold))+
     facet_wrap(~country) +
     scale_y_continuous(label=comma) +
-    xlab('Incremental discounted life-years saved')+
+    xlab('Disability-adjusted life-years averted')+
     ylab('Incremental cost (USD)')+
     theme(legend.position = "top" )
 if(!shell) GP
@@ -1272,7 +1554,6 @@ if(!shell) GP
 fn1 <- gh('graphs/CEallALL') + SA + '.' + ACF + '.png'
 ## fn2 <- gh('graphs/CEallALL') + SA + '.' + ACF + '.pdf'
 ggsave(GP,file=fn1,w=10,h=10); ## ggsave(GP,file=fn2,w=10,h=10)
-
 
 ## make CEAC data
 lz <- seq(from = 0,to=ceactop,length.out = 1000)
@@ -1286,7 +1567,8 @@ for(cn in unique(PT1$country)){
 bceacd <- rbindlist(bceacd)
 
 ## make CEAC plot
-BCEAC <- make.ceac.plot(bceacd,xpad=50)
+BCEAC <- make.ceac.plot(bceacd,xpad=50) +
+  xlab('Cost-effectiveness threshold (USD per DALY averted)')
 if(!shell) BCEAC
 
 ## save out
@@ -1294,7 +1576,126 @@ fn1 <- gh('graphs/CEACall') + SA + '.' + ACF + '.png'
 ## fn2 <- gh('graphs/CEACall') + SA + '.' + ACF + '.pdf'
 ggsave(BCEAC,file=fn1,w=10,h=10); ## ggsave(PCEAC,file=fn2,w=10,h=10)
 
+# labelled BCEAC
+BCEACL <- bceacd %>%
+  mutate(label_hjust = rep(c(0.85, 0.4, 0.25, 0.4, 0.95,0.25, 0.25, 0.15, 0.85), each=nrow(ceacd)/length(unique(country)))) %>%
+  ggplot() +
+  geomtextpath::geom_textline(aes(x,y,
+                                  col=country,
+                                  label=country,
+                                  hjust = label_hjust),
+                              size=4, vjust = 0.3, show.legend = FALSE, text_only = TRUE, text_smoothing = 40) + 
+  theme_classic() +
+  guides(col = guide_legend(order = 1, nrow = 2, title = 'Country')) +
+  theme(legend.position = 'top',legend.title = element_blank())+
+  # theme(legend.text=element_text(size=rel(0.8)))+
+  ggpubr::grids()+
+  scale_x_continuous(label=comma,
+                     breaks = seq(0,ceactop,250)) +
+  scale_colour_manual(values=c("#999999", "#E69F00", "#56B4E9","#009E73",
+                               "#F0E442", "#0072B2","#D55E00", "#CC79A7",
+                               "darkorchid1"))+
+  ylab('Probability cost-effective')+
+  xlab('Cost-effectiveness threshold (USD per DALY averted)')
 
+BCEACL
+ggsave(BCEACL,file=gh('graphs/CEACallL') + SA + '.png',w=7,h=7)
+
+## make BCEACY (0-4 years) data
+lz <- seq(from = 0,to=ceactop,length.out = 1000)
+bceacdy <- list()
+for(cn in unique(PTT2$country)){
+  tmp <- PTT2[age=='0-4',]
+  tmp <- tmp[country==cn,.(Q=dDALY,P=Dcost)]
+  bceacdy[[cn]] <- data.table(
+    country=cn,x=lz,
+    y=make.ceac(tmp,lz))
+}
+bceacdy <- rbindlist(bceacdy)
+
+## make CEAC plot
+BCEACY <- make.ceac.plot(bceacdy,xpad=50)  +
+  xlab('Cost-effectiveness threshold (USD per DALY averted)') +
+  guides(col = guide_legend(title = 'Country'))
+if(!shell) BCEACY
+
+## save out
+fn1 <- glue(here('graphs/CEACallY')) + SA + '.' + ACF + '.png'
+## fn2 <- glue(here('graphs/CEACallY')) + SA + '.' + ACF + '.pdf'
+ggsave(BCEACY,file=fn1,w=10,h=10); ## ggsave(BCEACY,file=fn2,w=10,h=10)
+
+# labelled BCEAC
+BCEACYL <- bceacdy %>%
+  mutate(label_hjust = rep(c(0.95, 0.7, 0.2, 0.3, 0.9,0.4, 0.25, 0.1, 0.85), each=nrow(ceacd)/length(unique(country)))) %>%
+  ggplot() +
+  geomtextpath::geom_textline(aes(x,y,
+                                  col=country,
+                                  label=country,
+                                  hjust = label_hjust),
+                              size=4, vjust = 0.3, show.legend = FALSE, text_only = TRUE, text_smoothing = 40) + 
+  theme_classic() +
+  guides(col = guide_legend(order = 1, nrow = 2, title = 'Country')) +
+  theme(legend.position = 'top',legend.title = element_blank())+
+  # theme(legend.text=element_text(size=rel(0.8)))+
+  ggpubr::grids()+
+  scale_x_continuous(label=comma,
+                     breaks = seq(0,ceactop,250)) +
+  scale_colour_manual(values=c("#999999", "#E69F00", "#56B4E9","#009E73",
+                               "#F0E442", "#0072B2","#D55E00", "#CC79A7",
+                               "darkorchid1"))+
+  ylab('Probability cost-effective')+
+  xlab('Cost-effectiveness threshold (USD per DALY averted)')
+
+BCEACYL
+ggsave(BCEACYL,file=gh('graphs/CEACYallL') + SA + '.png',w=7,h=7)
+
+## make BCEACO (5-14 years) data
+lz <- seq(from = 0,to=ceactop,length.out = 1000)
+bceacdo <- list()
+for(cn in unique(PTT2$country)){
+  tmp <- PTT2[age=='5-14',]
+  tmp <- tmp[country==cn,.(Q=dDALY,P=Dcost)]
+  bceacdo[[cn]] <- data.table(
+    country=cn,x=lz,
+    y=make.ceac(tmp,lz))
+}
+bceacdo <- rbindlist(bceacdo)
+
+## make CEAC plot
+BCEACO <- make.ceac.plot(bceacdo,xpad=50)  +
+  xlab('Cost-effectiveness threshold (USD per DALY averted)') +
+  guides(col = guide_legend(title = 'Country'))
+if(!shell) BCEACO
+
+## save out
+fn1 <- glue(here('graphs/CEACallO')) + SA + '.' + ACF + '.png'
+## fn2 <- glue(here('graphs/CEACallO')) + SA + '.' + ACF + '.pdf'
+ggsave(BCEACO,file=fn1,w=10,h=10); ## ggsave(BCEACO,file=fn2,w=10,h=10)
+
+# labelled BCEACO
+BCEACOL <- bceacdo %>%
+  mutate(label_hjust = rep(c(0.8, 0.3, 0.25, 0.5, 0.98,0.45, 0.25, 0.1, 0.85), each=nrow(ceacd)/length(unique(country)))) %>%
+  ggplot() +
+  geomtextpath::geom_textline(aes(x,y,
+                                  col=country,
+                                  label=country,
+                                  hjust = label_hjust),
+                              size=4, vjust = 0.3, show.legend = FALSE, text_only = TRUE, text_smoothing = 40) + 
+  theme_classic() +
+  guides(col = guide_legend(order = 1, nrow = 2, title = 'Country')) +
+  theme(legend.position = 'top',legend.title = element_blank())+
+  # theme(legend.text=element_text(size=rel(0.8)))+
+  ggpubr::grids()+
+  scale_x_continuous(label=comma,
+                     breaks = seq(0,ceactop,250)) +
+  scale_colour_manual(values=c("#999999", "#E69F00", "#56B4E9","#009E73",
+                               "#F0E442", "#0072B2","#D55E00", "#CC79A7",
+                               "darkorchid1"))+
+  ylab('Probability cost-effective')+
+  xlab('Cost-effectiveness threshold (USD per DALY averted)')
+
+BCEACOL
+ggsave(BCEACOL,file=gh('graphs/CEACOallL') + SA + '.png',w=7,h=7)
 ##  combined ICERS
 iceb <- PTT[,.(ICER=mean(Dcost)/mean(dDALY)),
           by=.(country,iso3)]
@@ -1306,6 +1707,15 @@ icebrr
 fn <- gh('outdata/ICERall') + SA + '.' + ACF + '.csv'
 fwrite(icebrr,file=fn)
 
+## output where things X 50%
+tmp <- bceacd[y>0.5 & abs(y-0.5)<5e-2] #NOTE may need tuning if sample changes
+tmp[,err:=abs(y-0.5)]
+tmp[,ermin:=min(err),by=country]
+tmp <- tmp[err==ermin]
+tmp <- tmp[,.(country,ceac50=round(x))]
+tmp
+fn <- gh('outdata/CEAC50all') + SA + '.' + ACF + '.csv'
+fwrite(tmp,file=fn)
 PTT
 
 ## --- make a larger set of outputs from both components, and weight appropriately
@@ -1408,22 +1818,73 @@ save(Table2both,file=fn)
 ## CEAC #from ceacd
 ## PCEAC #from pceacd
 ## BCEAC #from bceacd
+## TODO country names not iso3
 
 ttls <- c('Intensified case-finding intervention',
-          'Household contact management & HIV clinic preventive therapy intervention',
+          'Household contact management intervention',
           'Combined CaP TB intervention package')
 CAP <- list(CEAC,PCEAC,BCEAC)
 for(i in 1:3) CAP[[i]] <- CAP[[i]] + ggtitle(ttls[i])
 
 CAPP <- ggarrange(plotlist = CAP,
-                  labels="AUTO",
-          common.legend = TRUE,legend="bottom",ncol=1)
+                  labels=paste0(letters[1:3],")"),
+                  common.legend = TRUE,legend="bottom",ncol=1)
 
-fn1 <- gh('graphs/allCEACs') + SA + '.' + ACF + '.png'
-fn2 <- gh('graphs/allCEACs') + SA + '.' + ACF + '.eps'
+fn1 <- glue(here('graphs/allCEACs')) + SA + '.' + ACF + '.png'
+## fn2 <- glue(here('graphs/allCEACs')) + SA + '.' + ACF + '.pdf'
 ggsave(CAPP,file=fn1,w=8,h=15); #ggsave(CAPP,file=fn2,w=8,h=15);
-if(SA=='') ggsave(CAPP,file=fn2,w=8,h=15)
 
+# labelled CEACs
+CAPL <- list(CEACL,PCEACL,BCEACL)
+for(i in 1:3) CAPL[[i]] <- CAPL[[i]] + ggtitle(ttls[i])
+
+CAPPL <- ggarrange(plotlist = CAPL,
+                  labels=paste0(letters[1:3],")"),
+                  common.legend = TRUE,legend="bottom",ncol=1)
+
+fn1 <- glue(here('graphs/allCEACLs')) + SA + '.' + ACF + '.png'
+fn2 <- glue(here('graphs/allCEACLs')) + SA + '.' + ACF + '.pdf'
+ggsave(CAPPL,file=fn1,w=8,h=15); 
+ggsave(CAPPL,file=fn2,w=8,h=15);
+
+# 0-4 years
+CAP <- list(CEACYL,PCEACYL,BCEACYL)
+for(i in 1:3) CAP[[i]] <- CAP[[i]] + ggtitle(ttls[i])
+
+CAPPY <- ggarrange(plotlist = CAP,
+                   labels=paste0(letters[1:3],")"),
+                   common.legend = TRUE,legend="bottom",ncol=1)
+
+fn1 <- glue(here('graphs/allCEACLsY')) + SA + '.' + ACF + '.png'
+fn2 <- glue(here('graphs/allCEACLsY')) + SA + '.' + ACF + '.pdf'
+ggsave(CAPPY,file=fn1,w=8,h=15); ggsave(CAPPY,file=fn2,w=8,h=15);
+
+# 5-14 years
+CAP <- list(CEACOL,PCEACOL,BCEACOL)
+for(i in 1:3) CAP[[i]] <- CAP[[i]] + ggtitle(ttls[i])
+
+CAPPO <- ggarrange(plotlist = CAP,
+                   labels=paste0(letters[1:3],")"),
+                   common.legend = TRUE,legend="bottom",ncol=1)
+
+fn1 <- glue(here('graphs/allCEACLsO')) + SA + '.' + ACF + '.png'
+fn2 <- glue(here('graphs/allCEACLsO')) + SA + '.' + ACF + '.pdf'
+ggsave(CAPPO,file=fn1,w=8,h=15); ggsave(CAPPO,file=fn2,w=8,h=15);
+
+# Age groups 
+ttls <- c('0-4 years',
+          '5-14 years',
+          '0-14 years')
+CAP <- list(PCEACYL,PCEACOL,PCEACL)
+for(i in 1:3) CAP[[i]] <- CAP[[i]] + ggtitle(ttls[i])
+
+CAPPA <- ggarrange(plotlist = CAP,
+                   labels=paste0(letters[1:3],")"),
+                   common.legend = TRUE,legend="bottom",ncol=1)
+
+fn1 <- glue(here('graphs/allCEACsA')) + SA + '.' + ACF + '.png'
+## fn2 <- glue(here('graphs/allCEACsO')) + SA + '.' + ACF + '.pdf'
+ggsave(CAPPA,file=fn1,w=8,h=15); #ggsave(CAPPO,file=fn2,w=8,h=15);
 ## =============================================
 
 ## NOTE

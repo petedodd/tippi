@@ -20,7 +20,7 @@ upload.to.sheets <- function(basename,filename,sheetid
 }
 
 ## upload relevant table data
-upload.to.sheets(here('model/outdata//'),'cascadetab',shid) #first will need to re-authenticate
+upload.to.sheets(here('model/outdata/'),'cascadetab',shid) #first will need to re-authenticate
 
 ## rest can be run as block
 flz1 <- c(
@@ -94,17 +94,19 @@ upload.to.sheets(here('dataprep/outdata/'),"Tstats.csv",shidneat)
 
 ## --- SA table ---
 sa.base <- fread(here('model/outdata/ICERall.1.csv'))
+sa.dalys <- fread(here('model/outdata/ICERalldalys.1.csv'))
 sa.hi <- fread(here('model/outdata/ICERallhi.1.csv'))
 sa.lo <- fread(here('model/outdata/ICERalllo.1.csv'))
 sa.succ <- fread(here('model/outdata/ICERalltxd.1.csv'))
 
 
 names(sa.base)[3] <- 'Base case'
+names(sa.dalys)[3] <- 'Life years'
 names(sa.hi)[3] <- '5% discount rate'
 names(sa.lo)[3] <- '0% discount rate'
 names(sa.succ)[3] <- 'ATT/TPT completion improvement included'
 
-SAll <- Reduce(merge,list(sa.base,sa.hi,sa.lo,sa.succ))
+SAll <- Reduce(merge,list(sa.base,sa.dalys,sa.hi,sa.lo,sa.succ))
 
 write_sheet(SAll,shidneat,sheet="SAll")
 

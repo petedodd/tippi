@@ -23,6 +23,7 @@ SAT <- ifelse(SA=='txd','txd','') #SA relevant to Tx
 ACF <- 1
 
 ## libraries
+install.packages(here)
 library(here)
 library(data.table)
 library(HEdtree)
@@ -301,11 +302,11 @@ T <- merge(T,LYK[,.(iso3,age,LYS,LYS0)],by=c('iso3','age'),all.x=TRUE)
 T[,c('dLYS','dLYS0','dLYS.nohiv'):=.(LYS*LS,LYS0*LS,LYS*LS.hiv0)]
 
 if(SA=='dalys') {
-  # T[,dYLD:=0.25*0.331]         # saved years lived with disease in intervention
-  T[,c('dDALY','dDALY0','dDALY.nohiv'):=.(dLYS+dYLD,dLYS0+dYLD,dLYS.nohiv+dYLD)]
+  T[,c('dDALY','dDALY0','dDALY.nohiv'):=.(dLYS,dLYS0,dLYS.nohiv)]
 } else 
 {
-  T[,c('dDALY','dDALY0','dDALY.nohiv'):=.(dLYS,dLYS0,dLYS.nohiv)]
+  # T[,dYLD:=0.25*0.331]         # saved years lived with disease in intervention
+  T[,c('dDALY','dDALY0','dDALY.nohiv'):=.(dLYS+dYLD,dLYS0+dYLD,dLYS.nohiv+dYLD)]
 }
 
 ## calculate differential costs & DALYs over ages
@@ -1043,10 +1044,10 @@ PT[,dYLDACF:=LYDACF.soc-LYDACF.int]
 PT[,c('dDALYacf','dDALY0acf'):=.(LYS*LSACF,LYS0*LSACF)]
 
 if(SA=='dalys') {
-  PT[,c('dDALYacf','dDALY0acf'):=.(dDALYacf+dYLDACF,dDALY0acf+dYLDACF)]
+  PT[,c('dDALYacf','dDALY0acf'):=.(dDALYacf,dDALY0acf)]
 } else 
 {
-  PT[,c('dDALYacf','dDALY0acf'):=.(dDALYacf,dDALY0acf)]
+  PT[,c('dDALYacf','dDALY0acf'):=.(dDALYacf+dYLDACF,dDALY0acf+dYLDACF)]
 }
 
 ## NOTE assumption of same age split under SOC - tot pop RR
@@ -1079,9 +1080,10 @@ PT[,c('dDALY','dDALY0'):=.(LYS*LS,LYS0*LS)]
 
 ## 
 if(SA=='dalys') {
-  PT[,c('dDALY','dDALY0'):=.(dDALY+dYLD,dDALY0+dYLD)]
-} else{
   PT[,c('dDALY','dDALY0'):=.(dDALY,dDALY0)]
+} else{
+
+  PT[,c('dDALY','dDALY0'):=.(dDALY+dYLD,dDALY0+dYLD)]
 }
 
 ## looking at HEP separately

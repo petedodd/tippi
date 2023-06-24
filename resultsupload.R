@@ -29,12 +29,14 @@ flz1 <- c(
  "CEAC50.csv",         "CEAC50cdr.csv",      "CEAC50hi.csv",
  "CEAC50lo.csv",       "CEAC50pt.1.csv",     "CEAC50ptcdr.1.csv",
  "CEAC50pthi.1.csv",   "CEAC50ptlo.1.csv",   "CEAC50pttxd.1.csv",
- "CEAC50txd.csv",      "ICERagept.1.csv",    "ICERageptcdr.1.csv",
+ "CEAC50txd.csv",      "CEAC50all.1.csv",     "CEAC50allcdr.1.csv",
+ "CEAC50allhi.1.csv",   "CEAC50alllo.1.csv",   "CEAC50alltxd.1.csv",
+ "ICERagept.1.csv",    "ICERageptcdr.1.csv",
  "ICERagepthi.1.csv",  "ICERageptlo.1.csv",  "ICERagepttxd.1.csv",
  "ICERall.1.csv",      "ICERallcdr.1.csv",   "ICERallhi.1.csv",
  "ICERalllo.1.csv",    "ICERalltxd.1.csv")
 for( fn in flz1)
-  upload.to.sheets(here('model/outdata/'),fn,shid)
+  upload.to.sheets(here('model/outdata//'),fn,shid)
 
 Sys.sleep(120) #wait a bit so as not to annoy google
 
@@ -47,7 +49,7 @@ flz2 <- c("ICERatt.csv",
  "ptsuccess.csv",      "txsuccess.csv"
 )
 for( fn in flz2)
-  upload.to.sheets(here('model/outdata/'),fn,shid)
+  upload.to.sheets(here('model/outdata//'),fn,shid)
 
 
 ## need article tables
@@ -92,17 +94,19 @@ upload.to.sheets(here('dataprep/outdata/'),"Tstats.csv",shidneat)
 
 ## --- SA table ---
 sa.base <- fread(here('model/outdata/ICERall.1.csv'))
+sa.dalys <- fread(here('model/outdata/ICERalldalys.1.csv'))
 sa.hi <- fread(here('model/outdata/ICERallhi.1.csv'))
 sa.lo <- fread(here('model/outdata/ICERalllo.1.csv'))
 sa.succ <- fread(here('model/outdata/ICERalltxd.1.csv'))
 
 
 names(sa.base)[3] <- 'Base case'
+names(sa.dalys)[3] <- 'Life years'
 names(sa.hi)[3] <- '5% discount rate'
 names(sa.lo)[3] <- '0% discount rate'
 names(sa.succ)[3] <- 'ATT/TPT completion improvement included'
 
-SAll <- Reduce(merge,list(sa.base,sa.hi,sa.lo,sa.succ))
+SAll <- Reduce(merge,list(sa.base,sa.dalys,sa.hi,sa.lo,sa.succ))
 
 write_sheet(SAll,shidneat,sheet="SAll")
 
